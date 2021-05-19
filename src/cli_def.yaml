@@ -1,0 +1,27 @@
+%YAML 1.2
+---
+name: Image Kernel Convolution
+version: "0.0.1"
+author: Scheimong <28627918+cyqsimon@users.noreply.github.com>
+about: A CLI image processor using various kernel convolution algorithms
+args:
+  - input_img:
+      required: true
+      index: 1
+      help: The input image file path
+  - output_img:
+      required: false
+      index: 2
+      help: The output image file path (optional)
+  - do_blur:
+      short: b
+      long: blur
+      help: Blurs the input image
+      # Add exclusive
+  - verbose:
+      short: v
+      multiple: true
+      long: verbose
+      help: |-
+        Sets the verbosity level of output. This is a repeated flag
+          None: WARN, -v: INFO, -vv: DEBUG, -vvv: TRACE
