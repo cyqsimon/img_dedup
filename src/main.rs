@@ -1,3 +1,3 @@
 fn main() {
-    println!("Hello, world!");
+    img_kernel_convolution::hello_world();
 }
