@@ -2,7 +2,7 @@
 authors = ["cyqsimon <28627918+cyqsimon@users.noreply.github.com>"]
 edition = "2018"
 name = "img_kernel_convolution"
-version = "0.1.0"
+version = "0.0.1"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
