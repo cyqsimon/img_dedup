@@ -1,4 +1,4 @@
-# img_kernel_convolution
-Kernel convolution algorithm written in Rust
+# img_dedup
+Image deduplicator written in Rust
 
 Currently a stub. Work in progress

@@ -6,5 +6,5 @@ fn main() {
 
     println!("{:?}", matches);
 
-    img_kernel_convolution::hello_world();
+    img_dedup::hello_world();
 }
