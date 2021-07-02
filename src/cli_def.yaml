@@ -23,7 +23,10 @@ args:
         Sets the verbosity level of output. This is a repeated flag
           None: WARN, -v: INFO, -vv: DEBUG, -vvv: TRACE
 subcommands:
-  - scan:
+  - calc-hash:
+      about: Calculate and show hashes for the input files.
+
+  - scan-dup:
       about: Scan the input files for duplicates without removing anything.
       args:
         - threshold:
