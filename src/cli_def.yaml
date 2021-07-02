@@ -19,12 +19,12 @@ subcommands:
         - input_dir:
             required: true
             index: 1
-            help: The input image file path
-        - input_mask:
-            short: m
-            long: in_mask
+            help: The directory to source input files from
+        - input_filter:
+            short: f
+            long: in_filter
             takes_value: true
-            help: Only dedup files that match the mask
+            help: Only dedup files that match the filter
         - threshold:
             short: t
             long: threshold
