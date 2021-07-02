@@ -5,6 +5,16 @@ version: "0.0.1"
 author: Scheimong <28627918+cyqsimon@users.noreply.github.com>
 about: A command line program that finds and removes duplicated images using perceptual hashing.
 args:
+  - input_dir:
+      required: true
+      index: 1
+      help: The directory to source input files from
+  - input_filter:
+      short: f
+      long: in_filter
+      takes_value: true
+      default_value: ""
+      help: Only accept files that match the regex filter
   - verbose:
       short: v
       multiple: true
@@ -16,15 +26,6 @@ subcommands:
   - scan:
       about: Scan the input files for duplicates without removing anything.
       args:
-        - input_dir:
-            required: true
-            index: 1
-            help: The directory to source input files from
-        - input_filter:
-            short: f
-            long: in_filter
-            takes_value: true
-            help: Only dedup files that match the filter
         - threshold:
             short: t
             long: threshold
