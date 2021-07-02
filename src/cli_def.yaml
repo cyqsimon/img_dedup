@@ -5,20 +5,27 @@ version: "0.0.1"
 author: Scheimong <28627918+cyqsimon@users.noreply.github.com>
 about: A command line program that finds and removes duplicated images using perceptual hashing.
 args:
-    - input_dir:
-          required: true
-          index: 1
-          help: The input image file path
-    - input_mask:
-          required: false
-          short: m
-          long: in_mask
-          help: Only dedup files that match the mask
-    # todo
-    - verbose:
-          short: v
-          multiple: true
-          long: verbose
-          help: |-
-              Sets the verbosity level of output. This is a repeated flag
-                None: WARN, -v: INFO, -vv: DEBUG, -vvv: TRACE
+  - verbose:
+      short: v
+      multiple: true
+      long: verbose
+      help: |-
+        Sets the verbosity level of output. This is a repeated flag
+          None: WARN, -v: INFO, -vv: DEBUG, -vvv: TRACE
+subcommands:
+  - scan:
+      about: Scan the input files for duplicates without removing anything.
+      args:
+        - input_dir:
+            required: true
+            index: 1
+            help: The input image file path
+        - input_mask:
+            short: m
+            long: in_mask
+            takes_value: true
+            help: Only dedup files that match the mask
+        - threshold:
+            short: t
+            long: threshold
+            help: The minimum hamming distance for images to be considered identical
