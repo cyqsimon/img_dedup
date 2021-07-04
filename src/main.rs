@@ -65,15 +65,10 @@ fn compute_hash(imgs: &[(&Path, &DynamicImage)]) {
     let hasher = HasherConfig::new().to_hasher();
     let name_hash_pairs: Vec<_> = imgs
         .into_iter()
-        .map(|&(path, img)| {
-            (
-                get_filename_unchecked(path),
-                hasher.hash_image(img),
-            )
-        })
+        .map(|&(path, img)| (get_filename_unchecked(path), hasher.hash_image(img)))
         .collect();
     println!(
-        "Finished computing perceptual hash for {} images.",
+        "Finished computing perceptual hash for {} image(s).",
         name_hash_pairs.len()
     );
 
