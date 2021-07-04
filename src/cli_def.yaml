@@ -4,6 +4,9 @@ name: Image Deduplicator
 version: "0.0.1"
 author: Scheimong <28627918+cyqsimon@users.noreply.github.com>
 about: A command line program that finds and removes duplicated images using perceptual hashing.
+settings:
+  - InferSubcommands
+  - SubcommandRequiredElseHelp
 args:
   - input_dir:
       required: true
