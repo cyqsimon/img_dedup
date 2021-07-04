@@ -1,13 +1,37 @@
 use clap::{load_yaml, App};
 use image::DynamicImage;
+use img_dedup::load_in;
 use img_hash::HasherConfig;
-use std::path::Path;
+use regex::Regex;
+use std::{path::Path, process::exit};
 
 fn main() {
     let clap_def = load_yaml!("cli_def.yaml");
     let matches = App::from_yaml(clap_def).get_matches();
 
-    println!("{:?}", matches);
+    let in_dir = matches.value_of("input_dir").unwrap(); // arg is required
+    let in_filter_str = matches.value_of("input_filter").unwrap_or(""); // "" matches all
+    let in_filter_regex = Regex::new(in_filter_str).unwrap_or_else(|e| {
+        println!("The provided input filter is not a valid regex.");
+        println!("{:?}", e);
+        exit(1)
+    });
+
+    let load_res = load_in(Path::new(in_dir), in_filter_regex);
+    if let Err(e) = load_res {
+        println!("Failed to open the input directory.");
+        println!("{:?}", e);
+        exit(1);
+    }
+    let load_vec = load_res.unwrap();
+
+    let err_count = load_vec.iter().filter(|res| res.is_err()).count();
+    if err_count != 0 {
+        println!("Failed to load {} file(s) due to IO error.", err_count);
+    }
+
+    let imgs: Vec<_> = load_vec.into_iter().filter_map(|res| res.ok()).collect();
+    println!("Successfully loaded {} image file(s).", imgs.len());
 }
 
 fn calc_hash(imgs: &[(&Path, &DynamicImage)]) {

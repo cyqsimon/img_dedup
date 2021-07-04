@@ -13,8 +13,7 @@ args:
       short: f
       long: in_filter
       takes_value: true
-      default_value: ""
-      help: Only accept files that match the regex filter
+      help: 'Only accept files that match the regex filter. Default: "" (match all)'
   - verbose:
       short: v
       multiple: true
