@@ -1,4 +1,5 @@
 use clap::{crate_version, App, AppSettings, Arg, SubCommand};
+use regex::Regex;
 
 pub fn build_app() -> App<'static, 'static> {
     App::new("Image Deduplicator")
@@ -6,6 +7,7 @@ pub fn build_app() -> App<'static, 'static> {
         .author("Scheimong <28627918+cyqsimon@users.noreply.github.com>")
         .about("A command line program that finds and removes duplicated images using perceptual hashing.")
         .settings(&[
+            AppSettings::AllowNegativeNumbers,
             AppSettings::ArgRequiredElseHelp,
             AppSettings::DisableHelpSubcommand,
             AppSettings::InferSubcommands,
@@ -22,6 +24,7 @@ pub fn build_app() -> App<'static, 'static> {
                 .short("f")
                 .long("in_filter")
                 .takes_value(true)
+                .validator(|arg| Regex::new(&arg).map(|_| ()).map_err(|e| e.to_string()))
                 .help("Only accept files that match the regex filter. Default: \"\" (match all)"),
         )
         .arg(
@@ -41,6 +44,7 @@ pub fn build_app() -> App<'static, 'static> {
                         .long("threshold")
                         .takes_value(true)
                         .default_value("12")
+                        .validator(|arg| arg.parse::<u32>().map(|_| ()).map_err(|e| e.to_string()))
                         .help("The minimum hamming distance for images to be considered similar"),
                 ),
         )

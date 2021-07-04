@@ -13,14 +13,9 @@ fn main() {
     let clap_matches = build_app().get_matches();
 
     let in_dir = clap_matches.value_of("input_dir").unwrap(); // arg is required
-    let in_filter_regex = clap_matches.value_of("input_filter").map(|rgx_str| {
-        Regex::new(rgx_str).unwrap_or_else(|e| {
-            // if filter provided but is not legal regex, then exit
-            println!("The provided input filter is not a valid regex.");
-            println!("{:?}", e);
-            exit(1)
-        })
-    });
+    let in_filter_regex = clap_matches
+        .value_of("input_filter")
+        .map(|rgx_str| Regex::new(rgx_str).unwrap()); // regex validated by clap
 
     // load all files in directory, optionally using filter
     let load_res = match in_filter_regex {
@@ -30,7 +25,7 @@ fn main() {
         }
         None => {
             println!("Loading files in [{}] with no filter.", in_dir);
-            load_in(Path::new(in_dir), &Regex::new("").unwrap())
+            load_in(Path::new(in_dir), &Regex::new("").unwrap()) // static regex
         }
     };
     if let Err(e) = load_res {
@@ -38,7 +33,7 @@ fn main() {
         println!("{:?}", e);
         exit(1);
     }
-    let load_vec = load_res.unwrap();
+    let load_vec = load_res.unwrap(); // Err case guarded
 
     // log unsuccessful
     let err_count = load_vec.iter().filter(|res| res.is_err()).count();
@@ -59,14 +54,9 @@ fn main() {
         ("scan-duplicates", Some(sub_matches)) => {
             let threshold = sub_matches
                 .value_of("threshold")
-                .unwrap()
+                .unwrap() // clap provides default
                 .parse::<u32>()
-                .unwrap_or_else(|e| {
-                    // if threshold provided but is not legal u32, then exit
-                    println!("The provided threshold is not a valid u32.");
-                    println!("{:?}", e);
-                    exit(1)
-                });
+                .unwrap(); // u32 is validated by clap
             scan_duplicates(&imgs_refs, threshold);
         }
         _ => unreachable!(), // cases should always cover all defined subcmds; subcmds required
