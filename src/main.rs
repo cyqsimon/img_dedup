@@ -4,6 +4,7 @@ use image::DynamicImage;
 use img_dedup::{get_filename_unchecked, load_in};
 use img_hash::HasherConfig;
 use itertools::Itertools;
+use rayon::prelude::*;
 use regex::Regex;
 use std::{path::Path, process::exit};
 
@@ -67,10 +68,13 @@ fn compute_hash(imgs: &[(&Path, &DynamicImage)]) {
     const NAME_FMT_MAX_LEN: usize = 30;
 
     // compute hashes
-    let hasher = HasherConfig::new().to_hasher();
+    println!("Computing perceptual hash for {} image(s)...", imgs.len());
     let name_hash_pairs: Vec<_> = imgs
-        .into_iter()
-        .map(|&(path, img)| (get_filename_unchecked(path), hasher.hash_image(img)))
+        .par_iter()
+        .map_init(
+            || HasherConfig::new().to_hasher(),
+            |hasher, &(path, img)| (get_filename_unchecked(path), hasher.hash_image(img)),
+        )
         .collect();
     println!(
         "Finished computing perceptual hash for {} image(s).",
@@ -97,10 +101,13 @@ fn compute_hash(imgs: &[(&Path, &DynamicImage)]) {
 
 fn scan_duplicates(imgs: &[(&Path, &DynamicImage)], threshold: u32) {
     // compute hashes
-    let hasher = HasherConfig::new().to_hasher();
+    println!("Computing perceptual hash for {} image(s)...", imgs.len());
     let path_hash_pairs: Vec<_> = imgs
-        .into_iter()
-        .map(|&(path, img)| (path, hasher.hash_image(img)))
+        .par_iter()
+        .map_init(
+            || HasherConfig::new().to_hasher(),
+            |hasher, &(path, img)| (path, hasher.hash_image(img)),
+        )
         .collect();
     println!(
         "Finished computing perceptual hash for {} image(s).",
@@ -108,6 +115,10 @@ fn scan_duplicates(imgs: &[(&Path, &DynamicImage)], threshold: u32) {
     );
 
     // compute pairwise hamming distances
+    println!(
+        "Computing pairwise hamming distance for {} image pair(s)...",
+        path_hash_pairs.len() * (path_hash_pairs.len() - 1) / 2
+    );
     let pairwise_distances: Vec<_> = path_hash_pairs
         .into_iter()
         .tuple_combinations::<(_, _)>()
