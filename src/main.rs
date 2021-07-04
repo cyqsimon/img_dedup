@@ -130,7 +130,7 @@ fn scan_duplicates(imgs: &[(&Path, &DynamicImage)], threshold: u32) {
     );
 
     // log summary
-    let similar_pairs: Vec<_> = pairwise_distances
+    let mut similar_pairs: Vec<_> = pairwise_distances
         .iter()
         .filter_map(|&(path0, path1, dist)| {
             (dist <= threshold).then(|| (get_filename_unchecked(path0), get_filename_unchecked(path1), dist))
@@ -142,7 +142,8 @@ fn scan_duplicates(imgs: &[(&Path, &DynamicImage)], threshold: u32) {
         threshold
     );
 
-    // log each entry
+    // sort by distance and log each entry
+    similar_pairs.sort_by_key(|(_, _, dist)| *dist);
     for (name0, name1, dist) in similar_pairs {
         println!("  [{}] - [{}]  Distance: {}", name0, name1, dist);
     }
