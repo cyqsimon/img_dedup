@@ -1,10 +1,12 @@
-use image::{DynamicImage, ImageResult};
-use img_hash::{HasherConfig, ImageHash};
+use image::DynamicImage;
 use regex::Regex;
-use std::{fs::read_dir, io::ErrorKind, path::Path};
+use std::path::{Path, PathBuf};
 
-pub fn load_in(in_dir: &Path, in_filter: Regex) -> std::io::Result<Vec<ImageResult<DynamicImage>>> {
-    read_dir(in_dir)?
+pub fn load_in(in_dir: &Path, in_filter: Regex) -> std::io::Result<Vec<std::io::Result<(PathBuf, DynamicImage)>>> {
+    use std::{fs::read_dir, io::ErrorKind};
+
+    let dir_children = read_dir(in_dir)?;
+    Ok(dir_children
         // iter over io::Result<DirEntry>
         .map(|de_res| de_res.map(|de| de.path()))
         // iter over io::Result<PathBuf>
@@ -21,17 +23,16 @@ pub fn load_in(in_dir: &Path, in_filter: Regex) -> std::io::Result<Vec<ImageResu
             Err(_) => Some(p_res),
         })
         // filtered with regex
-        .map(|p_res| p_res.map(|path| image::open(&path)))
-        .collect()
-}
-
-pub fn gen_hashes(in_imgs: Vec<DynamicImage>) -> Vec<(DynamicImage, ImageHash)> {
-    let hasher = HasherConfig::new().to_hasher();
-    in_imgs
-        .into_iter()
-        .map(|img| {
-            let h = hasher.hash_image(&img);
-            (img, h)
+        .map(|p_res| match p_res {
+            Ok(path) => match image::open(&path) {
+                // if path can be opened as image, then return path-img pair
+                Ok(img) => std::io::Result::Ok((path, img)),
+                // else, produce IO error
+                Err(e) => Err(std::io::Error::new(ErrorKind::InvalidData, e)),
+            },
+            Err(_) => Err(p_res.unwrap_err()),
         })
-        .collect()
+        // iter over io::Result<DynamicImage>
+        .collect())
+    // collected to Vec<io::Result<DynamicImage>> and wrap in Ok()
 }
