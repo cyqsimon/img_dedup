@@ -61,6 +61,7 @@ fn main() {
 fn compute_hash(imgs: &[(&Path, &DynamicImage)]) {
     const NAME_FMT_MAX_LEN: usize = 30;
 
+    // compute hashes
     let hasher = HasherConfig::new().to_hasher();
     let name_hash_pairs: Vec<_> = imgs
         .into_iter()
@@ -74,6 +75,12 @@ fn compute_hash(imgs: &[(&Path, &DynamicImage)]) {
             )
         })
         .collect();
+    println!(
+        "Finished computing perceptual hash for {} images.",
+        name_hash_pairs.len()
+    );
+
+    // format and log
     let name_fmt_len = name_hash_pairs
         .iter()
         .map(|(name, _)| name.len())
