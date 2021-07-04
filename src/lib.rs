@@ -36,3 +36,10 @@ pub fn load_in(in_dir: &Path, in_filter: &Regex) -> std::io::Result<Vec<std::io:
         .collect())
     // collected to Vec<io::Result<DynamicImage>> and wrap in Ok()
 }
+
+pub fn get_filename_unchecked(path: &Path) -> &str {
+    path.file_name()
+        .expect("File \"..\" encountered unexpectedly.")
+        .to_str()
+        .expect("Bad file name (non-UTF8) encountered unexpectedly.")
+}

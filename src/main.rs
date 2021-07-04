@@ -1,6 +1,6 @@
 use clap::{load_yaml, App};
 use image::DynamicImage;
-use img_dedup::load_in;
+use img_dedup::{get_filename_unchecked, load_in};
 use img_hash::HasherConfig;
 use regex::Regex;
 use std::{path::Path, process::exit};
@@ -67,10 +67,7 @@ fn compute_hash(imgs: &[(&Path, &DynamicImage)]) {
         .into_iter()
         .map(|&(path, img)| {
             (
-                path.file_name()
-                    .expect("File \"..\" encountered unexpectedly.")
-                    .to_str()
-                    .expect("Bad file name (non-UTF8) encountered unexpectedly."),
+                get_filename_unchecked(path),
                 hasher.hash_image(img),
             )
         })
