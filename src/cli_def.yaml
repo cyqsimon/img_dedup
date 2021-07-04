@@ -37,5 +37,5 @@ subcommands:
             short: t
             long: threshold
             takes_value: true
-            default_value: 12 # todo: better default value
+            default_value: "12" # todo: better default value
             help: The minimum hamming distance for images to be considered identical
