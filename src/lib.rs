@@ -2,7 +2,7 @@ use image::DynamicImage;
 use regex::Regex;
 use std::path::{Path, PathBuf};
 
-pub fn load_in(in_dir: &Path, in_filter: Regex) -> std::io::Result<Vec<std::io::Result<(PathBuf, DynamicImage)>>> {
+pub fn load_in(in_dir: &Path, in_filter: &Regex) -> std::io::Result<Vec<std::io::Result<(PathBuf, DynamicImage)>>> {
     use std::{fs::read_dir, io::ErrorKind};
 
     let dir_children = read_dir(in_dir)?;

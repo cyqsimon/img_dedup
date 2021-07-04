@@ -10,14 +10,26 @@ fn main() {
     let matches = App::from_yaml(clap_def).get_matches();
 
     let in_dir = matches.value_of("input_dir").unwrap(); // arg is required
-    let in_filter_str = matches.value_of("input_filter").unwrap_or(""); // "" matches all
-    let in_filter_regex = Regex::new(in_filter_str).unwrap_or_else(|e| {
+    let in_filter_regex = matches.value_of("input_filter").map(|rgx_str| {
+        Regex::new(rgx_str).unwrap_or_else(|e| {
+            // if filter provided but is not legal regex, then exit
         println!("The provided input filter is not a valid regex.");
         println!("{:?}", e);
         exit(1)
+        })
     });
 
-    let load_res = load_in(Path::new(in_dir), in_filter_regex);
+    // load all files in directory, optionally using filter
+    let load_res = match in_filter_regex {
+        Some(rgx) => {
+            println!("Loading files in [{}] with regex filter [/{}/].", in_dir, rgx.as_str());
+            load_in(Path::new(in_dir), &rgx)
+        }
+        None => {
+            println!("Loading files in [{}] with no filter.", in_dir);
+            load_in(Path::new(in_dir), &Regex::new("").unwrap())
+        }
+    };
     if let Err(e) = load_res {
         println!("Failed to open the input directory.");
         println!("{:?}", e);
