@@ -13,9 +13,9 @@ fn main() {
     let in_filter_regex = matches.value_of("input_filter").map(|rgx_str| {
         Regex::new(rgx_str).unwrap_or_else(|e| {
             // if filter provided but is not legal regex, then exit
-        println!("The provided input filter is not a valid regex.");
-        println!("{:?}", e);
-        exit(1)
+            println!("The provided input filter is not a valid regex.");
+            println!("{:?}", e);
+            exit(1)
         })
     });
 
@@ -37,16 +37,28 @@ fn main() {
     }
     let load_vec = load_res.unwrap();
 
+    // log unsuccessful
     let err_count = load_vec.iter().filter(|res| res.is_err()).count();
     if err_count != 0 {
         println!("Failed to load {} file(s) due to IO error.", err_count);
     }
 
+    // collect and log successful
     let imgs: Vec<_> = load_vec.into_iter().filter_map(|res| res.ok()).collect();
     println!("Successfully loaded {} image file(s).", imgs.len());
+
+    // dispatch task to subcmds
+    match matches.subcommand_name() {
+        Some("compute-hash") => {
+            let imgs_refs: Vec<_> = imgs.iter().map(|(path, img)| (path.as_ref(), img)).collect();
+            compute_hash(&imgs_refs);
+        }
+        Some("scan-duplicates") => todo!(),
+        _ => unreachable!(), // cases should always cover all defined subcmds; subcmds required
+    };
 }
 
-fn calc_hash(imgs: &[(&Path, &DynamicImage)]) {
+fn compute_hash(imgs: &[(&Path, &DynamicImage)]) {
     const NAME_FMT_MAX_LEN: usize = 30;
 
     let hasher = HasherConfig::new().to_hasher();
