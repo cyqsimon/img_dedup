@@ -1,4 +1,5 @@
-use clap::{load_yaml, App};
+mod clap_def;
+
 use image::DynamicImage;
 use img_dedup::{get_filename_unchecked, load_in};
 use img_hash::HasherConfig;
@@ -6,12 +7,13 @@ use itertools::Itertools;
 use regex::Regex;
 use std::{path::Path, process::exit};
 
-fn main() {
-    let clap_def = load_yaml!("cli_def.yaml");
-    let matches = App::from_yaml(clap_def).get_matches();
+use crate::clap_def::build_app;
 
-    let in_dir = matches.value_of("input_dir").unwrap(); // arg is required
-    let in_filter_regex = matches.value_of("input_filter").map(|rgx_str| {
+fn main() {
+    let clap_matches = build_app().get_matches();
+
+    let in_dir = clap_matches.value_of("input_dir").unwrap(); // arg is required
+    let in_filter_regex = clap_matches.value_of("input_filter").map(|rgx_str| {
         Regex::new(rgx_str).unwrap_or_else(|e| {
             // if filter provided but is not legal regex, then exit
             println!("The provided input filter is not a valid regex.");
@@ -52,7 +54,7 @@ fn main() {
     let imgs_refs: Vec<_> = imgs.iter().map(|(path, img)| (path.as_ref(), img)).collect();
 
     // dispatch task to subcmds
-    match matches.subcommand() {
+    match clap_matches.subcommand() {
         ("compute-hash", Some(_sub_matches)) => compute_hash(&imgs_refs),
         ("scan-duplicates", Some(sub_matches)) => {
             let threshold = sub_matches
