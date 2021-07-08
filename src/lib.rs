@@ -1,40 +1,92 @@
 use image::DynamicImage;
 use regex::Regex;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::RwLock,
+};
 
-pub fn load_in(in_dir: &Path, in_filter: &Regex) -> std::io::Result<Vec<std::io::Result<(PathBuf, DynamicImage)>>> {
-    use std::{fs::read_dir, io::ErrorKind};
+pub fn load_in(
+    img_queue: &RwLock<Vec<(PathBuf, DynamicImage)>>,
+    in_dir: &Path,
+    in_filter: &Regex,
+) -> std::io::Result<()> {
+    use std::fs::read_dir;
 
-    let dir_children = read_dir(in_dir)?;
-    Ok(dir_children
+    // Number of files load at a time before trying a soft write-lock and push
+    // If cannot lock, then keep loading next batch
+    let load_batch_size = num_cpus::get();
+    // Maximum number of files allowed before requesting a hard write-lock and push
+    // Blocks until we can push into img_queue
+    let load_buffer_max = 128;
+
+    let selected_files: Vec<_> = read_dir(in_dir)? // short-circuit if error while opening directory
         // iter over io::Result<DirEntry>
         .map(|de_res| de_res.map(|de| de.path()))
         // iter over io::Result<PathBuf>
-        .filter_map(|p_res| match &p_res {
-            Ok(p) => match p.to_str() {
-                // if path can be parsed into str, then filter
-                Some(ps) => in_filter.is_match(ps).then(|| p_res),
-                // if path cannot be represented by str, then produce IO error
-                None => Some(Err(std::io::Error::new(
-                    ErrorKind::InvalidData,
-                    "File path is not valid utf-8 string",
-                ))),
-            },
-            Err(_) => Some(p_res),
+        .filter_map(|res| match res {
+            Ok(path) => Some(path),
+            Err(e) => {
+                println!("Failed to open a file: {:?}", e);
+                None
+            }
         })
-        // filtered with regex
-        .map(|p_res| match p_res {
-            Ok(path) => match image::open(&path) {
-                // if path can be opened as image, then return path-img pair
-                Ok(img) => std::io::Result::Ok((path, img)),
-                // else, produce IO error
-                Err(e) => Err(std::io::Error::new(ErrorKind::InvalidData, e)),
-            },
-            Err(_) => Err(p_res.unwrap_err()),
+        // iter over PathBuf
+        .filter(|path| match path.to_str() {
+            Some(path_str) => in_filter.is_match(path_str),
+            None => {
+                println!("File path is not a valid utf-8 string: {:?}", path);
+                false
+            }
         })
-        // iter over io::Result<DynamicImage>
-        .collect())
-    // collected to Vec<io::Result<DynamicImage>> and wrap in Ok()
+        // iter over PathBuf (filtered)
+        .collect();
+
+    // this buffer stores the imgs if the batches accumulate
+    let mut img_store_buffer = vec![];
+
+    for batch in selected_files.chunks(load_batch_size) {
+        // load the batch of imgs into temp vec
+        let mut batch_img_store_tmp: Vec<_> = batch
+            .into_iter()
+            .filter_map(|path| match image::open(path) {
+                Ok(img) => Some((path.clone(), img)),
+                Err(e) => {
+                    println!("Failed to load {:?} as image: {:?}", path, e);
+                    None
+                }
+            })
+            // iter over (PathBuf, DynamicImage)
+            .collect();
+
+        // move batch into buffer
+        img_store_buffer.append(&mut batch_img_store_tmp);
+
+        // attempt soft write-lock
+        match img_queue.try_write() {
+            Ok(mut vec) => vec.append(&mut img_store_buffer),
+            Err(_) => {
+                // if failed, check whether we should hard write-lock
+                if img_store_buffer.len() > load_buffer_max {
+                    img_queue
+                        .write()
+                        // block here until lock acquired
+                        .expect("A thread panicked while holding exclusive write-lock to img queue")
+                        .append(&mut img_store_buffer);
+                }
+            }
+        }
+    }
+
+    // drain buffer if necessary
+    if !img_store_buffer.is_empty() {
+        img_queue
+            .write()
+            // block here until lock acquired
+            .expect("A thread panicked while holding exclusive write-lock to img queue")
+            .append(&mut img_store_buffer);
+    }
+
+    Ok(())
 }
 
 pub fn get_filename_unchecked(path: &Path) -> &str {

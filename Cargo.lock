@@ -251,6 +251,7 @@ dependencies = [
  "img_hash",
  "itertools",
  "log",
+ "num_cpus",
  "rand",
  "rayon",
  "regex",
