@@ -16,19 +16,17 @@ fn main() {
     let in_dir = clap_matches.value_of("input_dir").unwrap(); // arg is required
     let in_filter_regex = clap_matches
         .value_of("input_filter")
-        .map(|rgx_str| Regex::new(rgx_str).unwrap()); // regex validated by clap
+        .map(|rgx_str| Regex::new(rgx_str).unwrap()) // regex validated by clap
+        .unwrap_or(Regex::new(".*").unwrap()); // ".*" matches everything
 
     // load all files in directory, optionally using filter
-    let load_res = match in_filter_regex {
-        Some(rgx) => {
-            println!("Loading files in [{}] with regex filter [/{}/].", in_dir, rgx.as_str());
-            load_in(Path::new(in_dir), &rgx)
-        }
-        None => {
-            println!("Loading files in [{}] with no filter.", in_dir);
-            load_in(Path::new(in_dir), &Regex::new("").unwrap()) // static regex
-        }
-    };
+    println!(
+        "Loading files in [{}] with regex filter [/{}/].",
+        in_dir,
+        in_filter_regex.as_str()
+    );
+    let load_res = load_in(Path::new(in_dir), &in_filter_regex);
+
     if let Err(e) = load_res {
         println!("Failed to open the input directory.");
         println!("{:?}", e);
