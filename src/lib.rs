@@ -45,9 +45,6 @@ pub fn load_in(img_send: Sender<(PathBuf, DynamicImage)>, opened_in_dir: ReadDir
             }
         };
     }
-
-    // cleanup: we might have to manually hang up sender here
-    //drop(img_send);
 }
 
 pub fn get_filename_unchecked(path: &Path) -> &str {
