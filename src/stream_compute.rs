@@ -14,7 +14,10 @@ pub fn calc_hashes(
             let imgs_recv_local = imgs_recv.clone();
             let hashes_send_local = hashes_send.clone();
             thread::spawn(move || {
-                let hasher = HasherConfig::new().to_hasher();
+                let hasher = HasherConfig::new()
+                    .hash_alg(img_hash::HashAlg::Blockhash)
+                    .hash_size(12, 12)
+                    .to_hasher();
                 // compute hash and send until empty and disconnected
                 imgs_recv_local.iter().for_each(|(path, img)| {
                     let path_hash_pair = (path, hasher.hash_image(&img));
