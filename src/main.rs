@@ -11,6 +11,7 @@ use std::{
     path::{Path, PathBuf},
     process::exit,
     thread,
+    time::Duration,
 };
 
 use crate::{
@@ -48,6 +49,20 @@ fn main() {
         load_in(imgs_tx, opened_imgs_dir, &in_filter_regex);
     });
 
+    // spawn image loader monitor daemon
+    let imgs_rx_monitor = imgs_rx.clone();
+    let (monitor_kill_tx, monitor_kill_rx) = bounded(0);
+    thread::spawn(move || loop {
+        println!("Currently {} images in load queue", imgs_rx_monitor.len());
+        // sleep for 5 seconds total, but check every 100ms inbetween
+        for _ in 0..50 {
+            if let Ok(_) = monitor_kill_rx.try_recv() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
+    });
+
     // dispatch task to subcmds
     match clap_matches.subcommand() {
         ("compute-hash", Some(_sub_matches)) => compute_hash(imgs_rx),
@@ -61,6 +76,11 @@ fn main() {
         }
         _ => unreachable!(), // cases should always cover all defined subcmds; subcmds required
     };
+
+    // stop monitoring daemon
+    monitor_kill_tx
+        .send(())
+        .expect("Image loader monitor daemon failed unexpectedly");
 }
 
 fn compute_hash(imgs_rx: Receiver<(PathBuf, DynamicImage)>) {
