@@ -1,9 +1,9 @@
 mod clap_def;
 mod file_loader;
+mod stream_compute;
 
 use crossbeam_channel::{bounded, unbounded, Receiver};
 use image::DynamicImage;
-use img_hash::HasherConfig;
 use itertools::Itertools;
 use regex::Regex;
 use std::{
@@ -16,6 +16,7 @@ use std::{
 use crate::{
     clap_def::build_app,
     file_loader::{get_filename_unchecked, load_in},
+    stream_compute::calc_hashes,
 };
 
 fn main() {
@@ -66,33 +67,14 @@ fn compute_hash(imgs: Receiver<(PathBuf, DynamicImage)>) {
     println!("Computing perceptual hash...");
     // create a unified reply channel for worker threads
     let (hash_in, hash_out) = unbounded();
-    let join_handles: Vec<_> = (0..num_cpus::get())
-        .map(|_| {
-            let img_recv = imgs.clone();
-            let hash_send = hash_in.clone();
-            thread::spawn(move || {
-                let hasher = HasherConfig::new().to_hasher();
-                // compute hash and send until empty and disconnected
-                img_recv.iter().for_each(|(path, img)| {
-                    let name_hash_pair = (get_filename_unchecked(&path).to_string(), hasher.hash_image(&img));
-                    hash_send
-                        .send(name_hash_pair)
-                        .expect("Hash receiver hung up unexpectedly");
-                });
-            })
-        })
-        .collect();
-    // manually drop the implicitly held sender and receiver as per best practice
-    drop(imgs);
-    drop(hash_in);
 
-    // wait for all workers to finish
-    join_handles.into_iter().for_each(|h| {
-        h.join().expect("A hash worker thread panicked unexpectedly");
-    });
+    calc_hashes(imgs, hash_in, num_cpus::get());
 
     // hash reply channel buffer => vec
-    let name_hash_pairs: Vec<_> = hash_out.into_iter().collect();
+    let name_hash_pairs: Vec<_> = hash_out
+        .into_iter()
+        .map(|(path, hash)| (get_filename_unchecked(&path).to_string(), hash))
+        .collect();
     println!(
         "Finished computing perceptual hash for {} image(s).",
         name_hash_pairs.len()
@@ -121,30 +103,8 @@ fn scan_duplicates(imgs: Receiver<(PathBuf, DynamicImage)>, threshold: u32) {
     println!("Computing perceptual hash...");
     // create a unified reply channel for worker threads
     let (hash_in, hash_out) = unbounded();
-    let join_handles: Vec<_> = (0..num_cpus::get())
-        .map(|_| {
-            let img_recv = imgs.clone();
-            let hash_send = hash_in.clone();
-            thread::spawn(move || {
-                let hasher = HasherConfig::new().to_hasher();
-                // compute hash and send until empty and disconnected
-                img_recv.iter().for_each(|(path, img)| {
-                    let path_hash_pair = (path, hasher.hash_image(&img));
-                    hash_send
-                        .send(path_hash_pair)
-                        .expect("Hash receiver hung up unexpectedly");
-                });
-            })
-        })
-        .collect();
-    // manually drop the implicitly held sender and receiver as per best practice
-    drop(imgs);
-    drop(hash_in);
 
-    // wait for all workers to finish
-    join_handles.into_iter().for_each(|h| {
-        h.join().expect("A hash worker thread panicked unexpectedly");
-    });
+    calc_hashes(imgs, hash_in, num_cpus::get());
 
     // hash reply channel buffer => vec
     let path_hash_pairs: Vec<_> = hash_out.into_iter().collect();
