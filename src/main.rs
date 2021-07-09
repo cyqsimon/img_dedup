@@ -23,7 +23,7 @@ fn main() {
     let clap_matches = build_app().get_matches();
 
     // create single-producer, multiple-consumer channel
-    let (img_in, img_out) = bounded(128);
+    let (imgs_tx, imgs_rx) = bounded(128);
 
     // get input options
     let in_dir = clap_matches.value_of("input_dir").unwrap(); // arg is required
@@ -45,35 +45,35 @@ fn main() {
         in_filter_regex.as_str()
     );
     thread::spawn(move || {
-        load_in(img_in, opened_imgs_dir, &in_filter_regex);
+        load_in(imgs_tx, opened_imgs_dir, &in_filter_regex);
     });
 
     // dispatch task to subcmds
     match clap_matches.subcommand() {
-        ("compute-hash", Some(_sub_matches)) => compute_hash(img_out),
+        ("compute-hash", Some(_sub_matches)) => compute_hash(imgs_rx),
         ("scan-duplicates", Some(sub_matches)) => {
             let threshold = sub_matches
                 .value_of("threshold")
                 .unwrap() // clap provides default
                 .parse::<u32>()
                 .unwrap(); // u32 is validated by clap
-            scan_duplicates(img_out, threshold);
+            scan_duplicates(imgs_rx, threshold);
         }
         _ => unreachable!(), // cases should always cover all defined subcmds; subcmds required
     };
 }
 
-fn compute_hash(imgs: Receiver<(PathBuf, DynamicImage)>) {
+fn compute_hash(imgs_rx: Receiver<(PathBuf, DynamicImage)>) {
     const NAME_FMT_MAX_LEN: usize = 30; // file names longer than this get truncated
 
     println!("Computing perceptual hash...");
     // create a unified reply channel for worker threads
-    let (hash_in, hash_out) = unbounded();
+    let (hashes_tx, hashes_rx) = unbounded();
 
-    calc_hashes(imgs, hash_in, num_cpus::get());
+    calc_hashes(imgs_rx, hashes_tx, num_cpus::get());
 
     // hash reply channel buffer => vec
-    let name_hash_pairs: Vec<_> = hash_out
+    let name_hash_pairs: Vec<_> = hashes_rx
         .into_iter()
         .map(|(path, hash)| (get_filename_unchecked(&path).to_string(), hash))
         .collect();
@@ -100,16 +100,16 @@ fn compute_hash(imgs: Receiver<(PathBuf, DynamicImage)>) {
     }
 }
 
-fn scan_duplicates(imgs: Receiver<(PathBuf, DynamicImage)>, threshold: u32) {
+fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, threshold: u32) {
     // compute hashes
     println!("Computing perceptual hash...");
     // create a unified reply channel for worker threads
-    let (hash_in, hash_out) = unbounded();
+    let (hashes_tx, hashes_rx) = unbounded();
 
-    calc_hashes(imgs, hash_in, num_cpus::get());
+    calc_hashes(imgs_rx, hashes_tx, num_cpus::get());
 
     // hash reply channel buffer => vec
-    let path_hash_pairs: Vec<_> = hash_out.into_iter().collect();
+    let path_hash_pairs: Vec<_> = hashes_rx.into_iter().collect();
     println!(
         "Finished computing perceptual hash for {} image(s).",
         path_hash_pairs.len()

@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub fn load_in(img_send: Sender<(PathBuf, DynamicImage)>, opened_in_dir: ReadDir, in_filter: &Regex) {
+pub fn load_in(imgs_tx: Sender<(PathBuf, DynamicImage)>, opened_in_dir: ReadDir, in_filter: &Regex) {
     let selected_files: Vec<_> = opened_in_dir // short-circuit if error while opening directory
         // iter over io::Result<DirEntry>
         .map(|de_res| de_res.map(|de| de.path()))
@@ -33,7 +33,7 @@ pub fn load_in(img_send: Sender<(PathBuf, DynamicImage)>, opened_in_dir: ReadDir
         // read file and send to buffer
         match image::open(&path) {
             Ok(img) => {
-                let send_res = img_send.send((path.clone(), img)); // blocks if channel is full
+                let send_res = imgs_tx.send((path.clone(), img)); // blocks if channel is full
                 if let Err(e) = send_res {
                     println!("All img_queue receivers hang up unexpectedly: {:?}", e);
                     println!("Image loading will stop now");
