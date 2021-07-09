@@ -25,6 +25,7 @@ fn main() {
     // create single-producer, multiple-consumer channel
     let (img_in, img_out) = bounded(128);
 
+    // get input options
     let in_dir = clap_matches.value_of("input_dir").unwrap(); // arg is required
     let in_filter_regex = clap_matches
         .value_of("input_filter")
@@ -36,6 +37,7 @@ fn main() {
         println!("Failed to open the input directory: {:?}", e);
         exit(1);
     });
+
     // start imgs loading (single producer)
     println!(
         "Loading files in [{}] with regex filter [/{}/].",
