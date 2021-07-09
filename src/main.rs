@@ -1,17 +1,25 @@
 mod clap_def;
 
+use crossbeam_channel::{bounded, unbounded, Receiver};
 use image::DynamicImage;
 use img_dedup::{get_filename_unchecked, load_in};
 use img_hash::HasherConfig;
 use itertools::Itertools;
-use rayon::prelude::*;
 use regex::Regex;
-use std::{path::Path, process::exit};
+use std::{
+    fs::read_dir,
+    path::{Path, PathBuf},
+    process::exit,
+    thread,
+};
 
 use crate::clap_def::build_app;
 
 fn main() {
     let clap_matches = build_app().get_matches();
+
+    // create single-producer, multiple-consumer channel
+    let (img_in, img_out) = bounded(128);
 
     let in_dir = clap_matches.value_of("input_dir").unwrap(); // arg is required
     let in_filter_regex = clap_matches
@@ -19,61 +27,69 @@ fn main() {
         .map(|rgx_str| Regex::new(rgx_str).unwrap()) // regex validated by clap
         .unwrap_or(Regex::new(".*").unwrap()); // ".*" matches everything
 
-    // load all files in directory, optionally using filter
+    // opening imgs_dir outside of thread makes for easier code logic
+    let opened_imgs_dir = read_dir(Path::new(in_dir)).unwrap_or_else(|e| {
+        println!("Failed to open the input directory: {:?}", e);
+        exit(1);
+    });
+    // start imgs loading (single producer)
     println!(
         "Loading files in [{}] with regex filter [/{}/].",
         in_dir,
         in_filter_regex.as_str()
     );
-    let load_res = load_in(Path::new(in_dir), &in_filter_regex);
-
-    if let Err(e) = load_res {
-        println!("Failed to open the input directory.");
-        println!("{:?}", e);
-        exit(1);
-    }
-    let load_vec = load_res.unwrap(); // Err case guarded
-
-    // log unsuccessful
-    let err_count = load_vec.iter().filter(|res| res.is_err()).count();
-    if err_count != 0 {
-        println!("Failed to load {} file(s) due to IO error.", err_count);
-    }
-
-    // collect and log successful
-    let imgs: Vec<_> = load_vec.into_iter().filter_map(|res| res.ok()).collect();
-    println!("Successfully loaded {} image file(s).", imgs.len());
-
-    // generate by-ref vector
-    let imgs_refs: Vec<_> = imgs.iter().map(|(path, img)| (path.as_ref(), img)).collect();
+    thread::spawn(move || {
+        load_in(img_in, opened_imgs_dir, &in_filter_regex);
+    });
 
     // dispatch task to subcmds
     match clap_matches.subcommand() {
-        ("compute-hash", Some(_sub_matches)) => compute_hash(&imgs_refs),
+        ("compute-hash", Some(_sub_matches)) => compute_hash(img_out),
         ("scan-duplicates", Some(sub_matches)) => {
             let threshold = sub_matches
                 .value_of("threshold")
                 .unwrap() // clap provides default
                 .parse::<u32>()
                 .unwrap(); // u32 is validated by clap
-            scan_duplicates(&imgs_refs, threshold);
+            scan_duplicates(img_out, threshold);
         }
         _ => unreachable!(), // cases should always cover all defined subcmds; subcmds required
     };
 }
 
-fn compute_hash(imgs: &[(&Path, &DynamicImage)]) {
-    const NAME_FMT_MAX_LEN: usize = 30;
+fn compute_hash(imgs: Receiver<(PathBuf, DynamicImage)>) {
+    const NAME_FMT_MAX_LEN: usize = 30; // file names longer than this get truncated
 
-    // compute hashes
-    println!("Computing perceptual hash for {} image(s)...", imgs.len());
-    let name_hash_pairs: Vec<_> = imgs
-        .par_iter()
-        .map_init(
-            || HasherConfig::new().to_hasher(),
-            |hasher, &(path, img)| (get_filename_unchecked(path), hasher.hash_image(img)),
-        )
+    println!("Computing perceptual hash...");
+    // create a unified reply channel for worker threads
+    let (hash_in, hash_out) = unbounded();
+    let join_handles: Vec<_> = (0..num_cpus::get())
+        .map(|_| {
+            let img_recv = imgs.clone();
+            let hash_send = hash_in.clone();
+            thread::spawn(move || {
+                let hasher = HasherConfig::new().to_hasher();
+                // compute hash and send until empty and disconnected
+                img_recv.iter().for_each(|(path, img)| {
+                    let name_hash_pair = (get_filename_unchecked(&path).to_string(), hasher.hash_image(&img));
+                    hash_send
+                        .send(name_hash_pair)
+                        .expect("Hash receiver hung up unexpectedly");
+                });
+            })
+        })
         .collect();
+    // manually drop the implicitly held sender and receiver as per best practice
+    drop(imgs);
+    drop(hash_in);
+
+    // wait for all workers to finish
+    join_handles.into_iter().for_each(|h| {
+        h.join().expect("A hash worker thread panicked unexpectedly");
+    });
+
+    // hash reply channel buffer => vec
+    let name_hash_pairs: Vec<_> = hash_out.into_iter().collect();
     println!(
         "Finished computing perceptual hash for {} image(s).",
         name_hash_pairs.len()
@@ -97,16 +113,38 @@ fn compute_hash(imgs: &[(&Path, &DynamicImage)]) {
     }
 }
 
-fn scan_duplicates(imgs: &[(&Path, &DynamicImage)], threshold: u32) {
+fn scan_duplicates(imgs: Receiver<(PathBuf, DynamicImage)>, threshold: u32) {
     // compute hashes
-    println!("Computing perceptual hash for {} image(s)...", imgs.len());
-    let path_hash_pairs: Vec<_> = imgs
-        .par_iter()
-        .map_init(
-            || HasherConfig::new().to_hasher(),
-            |hasher, &(path, img)| (path, hasher.hash_image(img)),
-        )
+    println!("Computing perceptual hash...");
+    // create a unified reply channel for worker threads
+    let (hash_in, hash_out) = unbounded();
+    let join_handles: Vec<_> = (0..num_cpus::get())
+        .map(|_| {
+            let img_recv = imgs.clone();
+            let hash_send = hash_in.clone();
+            thread::spawn(move || {
+                let hasher = HasherConfig::new().to_hasher();
+                // compute hash and send until empty and disconnected
+                img_recv.iter().for_each(|(path, img)| {
+                    let path_hash_pair = (path, hasher.hash_image(&img));
+                    hash_send
+                        .send(path_hash_pair)
+                        .expect("Hash receiver hung up unexpectedly");
+                });
+            })
+        })
         .collect();
+    // manually drop the implicitly held sender and receiver as per best practice
+    drop(imgs);
+    drop(hash_in);
+
+    // wait for all workers to finish
+    join_handles.into_iter().for_each(|h| {
+        h.join().expect("A hash worker thread panicked unexpectedly");
+    });
+
+    // hash reply channel buffer => vec
+    let path_hash_pairs: Vec<_> = hash_out.into_iter().collect();
     println!(
         "Finished computing perceptual hash for {} image(s).",
         path_hash_pairs.len()
@@ -130,8 +168,8 @@ fn scan_duplicates(imgs: &[(&Path, &DynamicImage)], threshold: u32) {
     // log summary
     let mut similar_pairs: Vec<_> = pairwise_distances
         .iter()
-        .filter_map(|&(path0, path1, dist)| {
-            (dist <= threshold).then(|| (get_filename_unchecked(path0), get_filename_unchecked(path1), dist))
+        .filter_map(|(path0, path1, dist)| {
+            (dist <= &threshold).then(|| (get_filename_unchecked(path0), get_filename_unchecked(path1), dist))
         })
         .collect();
     println!(
