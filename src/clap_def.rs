@@ -43,7 +43,7 @@ pub fn build_app() -> App<'static, 'static> {
                         .short("t")
                         .long("threshold")
                         .takes_value(true)
-                        .default_value("12")
+                        .default_value("8")
                         .validator(|arg| arg.parse::<u32>().map(|_| ()).map_err(|e| e.to_string()))
                         .help("The minimum hamming distance for images to be considered similar"),
                 ),
