@@ -1,8 +1,8 @@
 mod clap_def;
+mod file_loader;
 
 use crossbeam_channel::{bounded, unbounded, Receiver};
 use image::DynamicImage;
-use img_dedup::{get_filename_unchecked, load_in};
 use img_hash::HasherConfig;
 use itertools::Itertools;
 use regex::Regex;
@@ -13,7 +13,10 @@ use std::{
     thread,
 };
 
-use crate::clap_def::build_app;
+use crate::{
+    clap_def::build_app,
+    file_loader::{get_filename_unchecked, load_in},
+};
 
 fn main() {
     let clap_matches = build_app().get_matches();
