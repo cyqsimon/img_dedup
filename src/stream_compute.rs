@@ -15,8 +15,8 @@ pub fn calc_hashes(
             let hashes_tx_local = hashes_tx.clone();
             thread::spawn(move || {
                 let hasher = HasherConfig::new()
-                    .hash_alg(img_hash::HashAlg::Blockhash)
-                    .hash_size(12, 12)
+                    .hash_alg(img_hash::HashAlg::DoubleGradient)
+                    .hash_size(32, 32)
                     .to_hasher();
                 // compute hash and send until empty and disconnected
                 imgs_rx_local.iter().for_each(|(path, img)| {
