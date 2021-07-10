@@ -53,7 +53,13 @@ fn main() {
     let imgs_rx_monitor = imgs_rx.clone();
     let (monitor_kill_tx, monitor_kill_rx) = bounded(0);
     thread::spawn(move || loop {
-        println!("Currently {} images in load queue", imgs_rx_monitor.len());
+        let queue_len = imgs_rx_monitor.len();
+        if queue_len > 0 {
+            println!(
+                "IO loading images faster than we can hash; currently {} in queue",
+                queue_len
+            );
+        }
         // sleep for 5 seconds total, but check every 100ms inbetween
         for _ in 0..50 {
             if let Ok(_) = monitor_kill_rx.try_recv() {
