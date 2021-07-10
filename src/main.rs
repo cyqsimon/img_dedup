@@ -41,7 +41,7 @@ fn main() {
 
     // start imgs loading (single producer)
     println!(
-        "Loading files in [{}] with regex filter [/{}/]",
+        "Loading files in [{}] with regex filter [/{}/]...",
         in_dir,
         in_filter_regex.as_str()
     );
