@@ -41,7 +41,7 @@ fn main() {
 
     // start imgs loading (single producer)
     println!(
-        "Loading files in [{}] with regex filter [/{}/].",
+        "Loading files in [{}] with regex filter [/{}/]",
         in_dir,
         in_filter_regex.as_str()
     );
@@ -98,7 +98,7 @@ fn compute_hash(imgs_rx: Receiver<(PathBuf, DynamicImage)>) {
         .map(|(path, hash)| (get_filename_unchecked(&path).to_string(), hash))
         .collect();
     println!(
-        "Finished computing perceptual hash for {} image(s).",
+        "Finished computing perceptual hash for {} image(s)",
         name_hash_pairs.len()
     );
 
@@ -131,7 +131,7 @@ fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, threshold: u32) {
     // hash reply channel buffer => vec
     let path_hash_pairs: Vec<_> = hashes_rx.into_iter().collect();
     println!(
-        "Finished computing perceptual hash for {} image(s).",
+        "Finished computing perceptual hash for {} image(s)",
         path_hash_pairs.len()
     );
 
@@ -146,7 +146,7 @@ fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, threshold: u32) {
         .map(|((path0, hash0), (path1, hash1))| (path0, path1, hash0.dist(&hash1)))
         .collect();
     println!(
-        "Finished computing hamming distance for {} image pair(s).",
+        "Finished computing hamming distance for {} image pair(s)",
         pairwise_distances.len()
     );
 
@@ -158,7 +158,7 @@ fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, threshold: u32) {
         })
         .collect();
     println!(
-        "Found {} similar pair(s) with a hamming distance of ≤{}.",
+        "Found {} similar pair(s) with a hamming distance of ≤{}",
         similar_pairs.len(),
         threshold
     );
