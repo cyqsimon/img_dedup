@@ -34,6 +34,13 @@ fn main() {
         .map(|rgx_str| Regex::new(rgx_str).unwrap()) // regex validated by clap
         .unwrap_or(Regex::new(".*").unwrap()); // ".*" matches everything
 
+    // get concurrency options
+    let concurrency = clap_matches
+        .value_of("concurrency")
+        .unwrap() // default provided by clap
+        .parse::<usize>()
+        .unwrap(); // usize parse validated by clap
+
     // opening imgs_dir outside of thread makes for easier code logic
     let opened_imgs_dir = read_dir(Path::new(in_dir)).unwrap_or_else(|e| {
         println!("Failed to open the input directory: {:?}", e);
@@ -70,11 +77,14 @@ fn main() {
         }
     });
 
+    // log concurrency info
+    println!("Using {} threads for stream compute", concurrency);
+
     // dispatch task to subcmds
     match clap_matches.subcommand() {
-        ("compute-hash", Some(_)) => compute_hash(imgs_rx),
+        ("compute-hash", Some(_)) => compute_hash(imgs_rx, concurrency),
         ("scan-duplicates", Some(sub_matches)) => {
-            scan_duplicates(imgs_rx, sub_matches);
+            scan_duplicates(imgs_rx, concurrency, sub_matches);
         }
         _ => unreachable!(), // cases should always cover all defined subcmds; subcmds required
     };
@@ -85,14 +95,14 @@ fn main() {
         .expect("Image loader monitor daemon failed unexpectedly");
 }
 
-fn compute_hash(imgs_rx: Receiver<(PathBuf, DynamicImage)>) {
+fn compute_hash(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize) {
     const NAME_FMT_MAX_LEN: usize = 30; // file names longer than this get truncated
 
     println!("Computing perceptual hash...");
     // create a unified reply channel for worker threads
     let (hashes_tx, hashes_rx) = unbounded();
 
-    calc_hashes(imgs_rx, hashes_tx, num_cpus::get());
+    calc_hashes(imgs_rx, hashes_tx, concurrency);
 
     // hash reply channel buffer => vec
     let name_hash_pairs: Vec<_> = hashes_rx
@@ -122,13 +132,13 @@ fn compute_hash(imgs_rx: Receiver<(PathBuf, DynamicImage)>) {
     }
 }
 
-fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, sub_matches: &ArgMatches) {
+fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize, sub_matches: &ArgMatches) {
     // compute hashes
     println!("Computing perceptual hash...");
     // create a unified reply channel for worker threads
     let (hashes_tx, hashes_rx) = unbounded();
 
-    calc_hashes(imgs_rx, hashes_tx, num_cpus::get());
+    calc_hashes(imgs_rx, hashes_tx, concurrency);
 
     // hash reply channel buffer => vec
     let path_hash_pairs: Vec<_> = hashes_rx.into_iter().collect();
