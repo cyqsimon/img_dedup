@@ -100,9 +100,8 @@ fn compute_hash(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize) 
     println!("Computing perceptual hash...");
     // create a unified reply channel for worker threads
     let (hashes_tx, hashes_rx) = unbounded();
-
+    // run calculations
     calc_hashes(imgs_rx, hashes_tx, concurrency);
-
     // hash reply channel buffer => vec
     let name_hash_pairs: Vec<_> = hashes_rx
         .into_iter()
@@ -159,7 +158,7 @@ fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usiz
         .value_of("threshold")
         .unwrap() // clap provides default
         .parse::<u32>()
-        .unwrap(); // u32 is validated by clap
+        .unwrap(); // u32 parse validated by clap
     let mut similar_pairs: Vec<_> = pairwise_distances
         .into_iter()
         .filter_map(|(path0, path1, dist)| {
