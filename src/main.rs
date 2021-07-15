@@ -1,6 +1,6 @@
 mod clap_def;
+mod compute;
 mod file_loader;
-mod stream_compute;
 
 use clap::ArgMatches;
 use crossbeam_channel::{bounded, unbounded, Receiver};
@@ -17,8 +17,8 @@ use std::{
 
 use crate::{
     clap_def::build_app,
+    compute::calc_hashes,
     file_loader::{get_filename_unchecked, load_in},
-    stream_compute::calc_hashes,
 };
 
 fn main() {
