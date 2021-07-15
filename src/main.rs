@@ -29,10 +29,10 @@ fn main() {
 
     // get input options
     let in_dir = clap_matches.value_of("input_dir").unwrap(); // arg is required
-    let in_filter_regex = clap_matches
-        .value_of("input_filter")
-        .map(|rgx_str| Regex::new(rgx_str).unwrap()) // regex validated by clap
-        .unwrap_or(Regex::new(".*").unwrap()); // ".*" matches everything
+    let in_filter_regex = Regex::new(
+        clap_matches.value_of("input_filter").unwrap(), // default provided by clap
+    )
+    .unwrap(); // regex validated by clap
 
     // get concurrency options
     let concurrency = clap_matches

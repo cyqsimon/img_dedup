@@ -28,8 +28,9 @@ pub fn build_app() -> App<'static, 'static> {
                 .short("f")
                 .long("in_filter")
                 .takes_value(true)
+                .default_value(".*")
                 .validator(|arg| Regex::new(&arg).map(|_| ()).map_err(|e| e.to_string()))
-                .help("Only accept files that match the regex filter. Default: \".*\" (match all)"),
+                .help("Only accept files that match the regex filter."),
         )
         .arg(
             Arg::with_name("concurrency")
