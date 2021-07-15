@@ -35,7 +35,7 @@ pub fn load_in(imgs_tx: Sender<(PathBuf, DynamicImage)>, opened_in_dir: ReadDir,
             Ok(img) => {
                 let send_res = imgs_tx.send((path.clone(), img)); // blocks if channel is full
                 if let Err(e) = send_res {
-                    println!("All img_queue receivers hang up unexpectedly: {:?}", e);
+                    println!("All image receivers hang up unexpectedly: {:?}", e);
                     println!("Image loading will stop now");
                     break;
                 }
