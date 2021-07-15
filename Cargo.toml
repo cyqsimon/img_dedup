@@ -8,6 +8,7 @@ version = "0.0.1"
 
 [dependencies]
 clap = "^2.33.3"
+crossbeam = "^0.8.1"
 crossbeam-channel = "^0.5.1"
 image = "^0.23.14"
 img_hash = "^3.2.0"

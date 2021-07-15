@@ -5,7 +5,6 @@ mod file_loader;
 use clap::ArgMatches;
 use crossbeam_channel::{bounded, unbounded, Receiver};
 use image::DynamicImage;
-use itertools::Itertools;
 use regex::Regex;
 use std::{
     fs::read_dir,
@@ -17,7 +16,7 @@ use std::{
 
 use crate::{
     clap_def::build_app,
-    compute::calc_hashes,
+    compute::{calc_hashes, calc_pair_dist},
     file_loader::{get_filename_unchecked, load_in},
 };
 
@@ -137,9 +136,8 @@ fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usiz
     println!("Computing perceptual hash...");
     // create a unified reply channel for worker threads
     let (hashes_tx, hashes_rx) = unbounded();
-
+    // run calculations
     calc_hashes(imgs_rx, hashes_tx, concurrency);
-
     // hash reply channel buffer => vec
     let path_hash_pairs: Vec<_> = hashes_rx.into_iter().collect();
     println!(
@@ -148,17 +146,11 @@ fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usiz
     );
 
     // compute pairwise hamming distances
+    println!("Computing pairwise hamming distances...");
+    // run calculations
+    let pairwise_distances = calc_pair_dist(&path_hash_pairs, concurrency);
     println!(
-        "Computing pairwise hamming distance for {} image pair(s)...",
-        path_hash_pairs.len() * (path_hash_pairs.len() - 1) / 2
-    );
-    let pairwise_distances: Vec<_> = path_hash_pairs
-        .into_iter()
-        .tuple_combinations::<(_, _)>()
-        .map(|((path0, hash0), (path1, hash1))| (path0, path1, hash0.dist(&hash1)))
-        .collect();
-    println!(
-        "Finished computing hamming distance for {} image pair(s)",
+        "Finished computing hamming distances for {} pairs",
         pairwise_distances.len()
     );
 
@@ -169,9 +161,9 @@ fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usiz
         .parse::<u32>()
         .unwrap(); // u32 is validated by clap
     let mut similar_pairs: Vec<_> = pairwise_distances
-        .iter()
+        .into_iter()
         .filter_map(|(path0, path1, dist)| {
-            (dist <= &threshold).then(|| (get_filename_unchecked(path0), get_filename_unchecked(path1), dist))
+            (dist <= threshold).then(|| (get_filename_unchecked(path0), get_filename_unchecked(path1), dist))
         })
         .collect();
     println!(
