@@ -2,8 +2,9 @@ use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 use regex::Regex;
 
 pub fn build_app() -> App<'static, 'static> {
-    // create never-freed static str
-    // see https://stackoverflow.com/a/30527289/5637701
+    // by default, use as many threads as the host has logical cores
+    // create never-freed static str, see https://stackoverflow.com/a/30527289/5637701
+    // need to do this, otherwise we've got lifetime problems
     let default_concurrency_str: &'static str = Box::leak(num_cpus::get().to_string().into_boxed_str());
 
     App::new("Image Deduplicator")
@@ -37,7 +38,7 @@ pub fn build_app() -> App<'static, 'static> {
                 .short("c")
                 .long("concurrency")
                 .takes_value(true)
-                .default_value(&default_concurrency_str)
+                .default_value(default_concurrency_str)
                 .validator(|arg| {
                     arg.parse::<usize>()
                         .map_err(|e| e.to_string())
