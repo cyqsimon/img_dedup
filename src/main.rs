@@ -77,7 +77,7 @@ fn main() {
     });
 
     // log concurrency info
-    println!("Using {} threads for stream compute", concurrency);
+    println!("Using up to {} threads", concurrency);
 
     // dispatch task to subcmds
     match clap_matches.subcommand() {
