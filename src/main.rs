@@ -2,6 +2,7 @@ mod clap_def;
 mod file_loader;
 mod stream_compute;
 
+use clap::ArgMatches;
 use crossbeam_channel::{bounded, unbounded, Receiver};
 use image::DynamicImage;
 use itertools::Itertools;
@@ -71,14 +72,9 @@ fn main() {
 
     // dispatch task to subcmds
     match clap_matches.subcommand() {
-        ("compute-hash", Some(_sub_matches)) => compute_hash(imgs_rx),
+        ("compute-hash", Some(_)) => compute_hash(imgs_rx),
         ("scan-duplicates", Some(sub_matches)) => {
-            let threshold = sub_matches
-                .value_of("threshold")
-                .unwrap() // clap provides default
-                .parse::<u32>()
-                .unwrap(); // u32 is validated by clap
-            scan_duplicates(imgs_rx, threshold);
+            scan_duplicates(imgs_rx, sub_matches);
         }
         _ => unreachable!(), // cases should always cover all defined subcmds; subcmds required
     };
@@ -126,7 +122,7 @@ fn compute_hash(imgs_rx: Receiver<(PathBuf, DynamicImage)>) {
     }
 }
 
-fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, threshold: u32) {
+fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, sub_matches: &ArgMatches) {
     // compute hashes
     println!("Computing perceptual hash...");
     // create a unified reply channel for worker threads
@@ -156,7 +152,12 @@ fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, threshold: u32) {
         pairwise_distances.len()
     );
 
-    // log summary
+    // filter by threshold and log summary
+    let threshold = sub_matches
+        .value_of("threshold")
+        .unwrap() // clap provides default
+        .parse::<u32>()
+        .unwrap(); // u32 is validated by clap
     let mut similar_pairs: Vec<_> = pairwise_distances
         .iter()
         .filter_map(|(path0, path1, dist)| {
