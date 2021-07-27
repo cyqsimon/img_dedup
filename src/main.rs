@@ -1,4 +1,5 @@
 mod clap_def;
+mod cli_helper;
 mod compute;
 mod file_loader;
 
@@ -16,6 +17,7 @@ use std::{
 
 use crate::{
     clap_def::build_app,
+    cli_helper::{parse_algo, parse_hash_size},
     compute::{calc_hashes, calc_pair_dist},
     file_loader::{get_filename_unchecked, load_in},
 };
@@ -81,7 +83,7 @@ fn main() {
 
     // dispatch task to subcmds
     match clap_matches.subcommand() {
-        ("compute-hash", Some(_)) => compute_hash(imgs_rx, concurrency),
+        ("hash", Some(sub_matches)) => hash_once(imgs_rx, concurrency, sub_matches),
         ("scan-duplicates", Some(sub_matches)) => {
             scan_duplicates(imgs_rx, concurrency, sub_matches);
         }
@@ -94,14 +96,26 @@ fn main() {
         .expect("Image loader monitor daemon failed unexpectedly");
 }
 
-fn compute_hash(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize) {
+fn hash_once(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize, sub_matches: &ArgMatches) {
     const NAME_FMT_MAX_LEN: usize = 30; // file names longer than this get truncated
 
     println!("Computing perceptual hash...");
+    // get algorithm option
+    let algo = parse_algo(
+        sub_matches.value_of("algorithm").unwrap(), // default provided by clap
+    )
+    .unwrap(); // validation provided by clap
+
+    // get hash size option
+    let hash_size = parse_hash_size(
+        sub_matches.value_of("hash-size").unwrap(), // default provided by clap
+    )
+    .unwrap(); // validation provided by clap
+
     // create a unified reply channel for worker threads
     let (hashes_tx, hashes_rx) = unbounded();
     // run calculations
-    calc_hashes(imgs_rx, hashes_tx, concurrency);
+    calc_hashes(imgs_rx, hashes_tx, concurrency, algo, hash_size);
     // hash reply channel buffer => vec
     let name_hash_pairs: Vec<_> = hashes_rx
         .into_iter()
@@ -133,10 +147,22 @@ fn compute_hash(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize) 
 fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize, sub_matches: &ArgMatches) {
     // compute hashes
     println!("Computing perceptual hash...");
+    // get algorithm option
+    let algo = parse_algo(
+        sub_matches.value_of("algorithm").unwrap(), // default provided by clap
+    )
+    .unwrap(); // validation provided by clap
+
+    // get hash size option
+    let hash_size = parse_hash_size(
+        sub_matches.value_of("hash-size").unwrap(), // default provided by clap
+    )
+    .unwrap(); // validation provided by clap
+
     // create a unified reply channel for worker threads
     let (hashes_tx, hashes_rx) = unbounded();
     // run calculations
-    calc_hashes(imgs_rx, hashes_tx, concurrency);
+    calc_hashes(imgs_rx, hashes_tx, concurrency, algo, hash_size);
     // hash reply channel buffer => vec
     let path_hash_pairs: Vec<_> = hashes_rx.into_iter().collect();
     println!(

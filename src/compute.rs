@@ -5,13 +5,15 @@ use std::{
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use image::DynamicImage;
-use img_hash::{HasherConfig, ImageHash};
+use img_hash::{HashAlg, HasherConfig, ImageHash};
 use itertools::Itertools;
 
 pub fn calc_hashes(
     imgs_rx: Receiver<(PathBuf, DynamicImage)>,
     hashes_tx: Sender<(PathBuf, ImageHash)>,
     thread_count: usize,
+    algorithm: HashAlg,
+    hash_size: (u32, u32),
 ) {
     let join_handles: Vec<_> = (0..thread_count)
         .map(|_| {
@@ -19,8 +21,8 @@ pub fn calc_hashes(
             let hashes_tx_local = hashes_tx.clone();
             thread::spawn(move || {
                 let hasher = HasherConfig::new()
-                    .hash_alg(img_hash::HashAlg::DoubleGradient)
-                    .hash_size(32, 32)
+                    .hash_alg(algorithm)
+                    .hash_size(hash_size.0, hash_size.1)
                     .to_hasher();
                 // compute hash and send until empty and disconnected
                 imgs_rx_local.iter().for_each(|(path, img)| {
