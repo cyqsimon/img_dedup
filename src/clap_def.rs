@@ -2,11 +2,6 @@ use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 use regex::Regex;
 
 pub fn build_app() -> App<'static, 'static> {
-    // by default, use as many threads as the host has logical cores
-    // create never-freed static str, see https://stackoverflow.com/a/30527289/5637701
-    // need to do this, otherwise we've got lifetime problems
-    let default_concurrency_str: &'static str = Box::leak(num_cpus::get().to_string().into_boxed_str());
-
     App::new("Image Deduplicator")
         .version(crate_version!())
         .author("Scheimong <28627918+cyqsimon@users.noreply.github.com>")
@@ -33,19 +28,23 @@ pub fn build_app() -> App<'static, 'static> {
                 .validator(|arg| Regex::new(&arg).map(|_| ()).map_err(|e| e.to_string()))
                 .help("Only accept files that match the regex filter."),
         )
-        .arg(
+        .arg({
+            // by default, use as many threads as the host has logical cores
+            // create never-freed static str, see https://stackoverflow.com/a/30527289/5637701
+            // need to do this, otherwise we've got lifetime problems
+            let default_val: &'static str = Box::leak(num_cpus::get().to_string().into_boxed_str());
             Arg::with_name("concurrency")
                 .short("c")
                 .long("concurrency")
                 .takes_value(true)
-                .default_value(default_concurrency_str)
+                .default_value(default_val)
                 .validator(|arg| {
                     arg.parse::<usize>()
                         .map_err(|e| e.to_string())
                         .and_then(|th| (th != 0).then(|| ()).ok_or("Cannot specify 0 threads".into()))
                 })
-                .help("The number of threads to use for parallel compute"),
-        )
+                .help("The number of threads to use for parallel compute")
+        })
         .arg(
             Arg::with_name("verbose")
                 .short("v")
