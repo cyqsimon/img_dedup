@@ -61,7 +61,7 @@ fn main() {
     // spawn image loader monitor daemon
     let imgs_rx_monitor = imgs_rx.clone();
     let (monitor_kill_tx, monitor_kill_rx) = bounded(0);
-    thread::spawn(move || loop {
+    thread::spawn(move || 'thread: loop {
         let queue_len = imgs_rx_monitor.len();
         if queue_len > 0 {
             println!(
@@ -69,10 +69,10 @@ fn main() {
                 queue_len
             );
         }
-        // sleep for 5 seconds total, but check every 100ms inbetween
+        // sleep for 5s total, but check for termination every 100ms
         for _ in 0..50 {
             if let Ok(_) = monitor_kill_rx.try_recv() {
-                break;
+                break 'thread;
             }
             thread::sleep(Duration::from_millis(100));
         }
