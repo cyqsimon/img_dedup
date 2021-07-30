@@ -2,24 +2,18 @@ mod clap_def;
 mod cli_helper;
 mod compute;
 mod file_loader;
+mod sub_cmds;
+mod sub_ops;
 
-use clap::ArgMatches;
-use crossbeam_channel::{bounded, unbounded, Receiver};
-use image::DynamicImage;
+use crossbeam_channel::bounded;
+
 use regex::Regex;
-use std::{
-    fs::read_dir,
-    path::{Path, PathBuf},
-    process::exit,
-    thread,
-    time::Duration,
-};
+use std::{fs::read_dir, path::Path, process::exit, thread, time::Duration};
 
 use crate::{
     clap_def::build_app,
-    cli_helper::{parse_algo, parse_hash_size},
-    compute::{calc_hashes, calc_pair_dist},
-    file_loader::{get_filename_unchecked, load_in},
+    file_loader::load_in,
+    sub_cmds::{hash_once, scan_duplicates},
 };
 
 fn main() {
@@ -94,112 +88,4 @@ fn main() {
     monitor_kill_tx
         .send(())
         .expect("Image loader monitor daemon failed unexpectedly");
-}
-
-fn hash_once(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize, sub_matches: &ArgMatches) {
-    const NAME_FMT_MAX_LEN: usize = 30; // file names longer than this get truncated
-
-    println!("Computing perceptual hash...");
-    // get algorithm option
-    let algo = parse_algo(
-        sub_matches.value_of("algorithm").unwrap(), // default provided by clap
-    )
-    .unwrap(); // validation provided by clap
-
-    // get hash size option
-    let hash_size = parse_hash_size(
-        sub_matches.value_of("hash-size").unwrap(), // default provided by clap
-    )
-    .unwrap(); // validation provided by clap
-
-    // create a unified reply channel for worker threads
-    let (hashes_tx, hashes_rx) = unbounded();
-    // run calculations
-    calc_hashes(imgs_rx, hashes_tx, concurrency, algo, hash_size);
-    // hash reply channel buffer => vec
-    let name_hash_pairs: Vec<_> = hashes_rx
-        .into_iter()
-        .map(|(path, hash)| (get_filename_unchecked(&path).to_string(), hash))
-        .collect();
-    println!(
-        "Finished computing perceptual hash for {} image(s)",
-        name_hash_pairs.len()
-    );
-
-    // format and log
-    let name_fmt_len = name_hash_pairs
-        .iter()
-        .map(|(name, _)| name.len())
-        .max()
-        .unwrap_or(0)
-        .min(NAME_FMT_MAX_LEN);
-    for (name, hash) in name_hash_pairs {
-        let name_truncated_braced = format!("[{:.max_len$}]", name, max_len = NAME_FMT_MAX_LEN);
-        println!(
-            "  Img: {:<fmt_len$}  Hash: [{}]",
-            name_truncated_braced,
-            hash.to_base64(),
-            fmt_len = name_fmt_len + 2
-        );
-    }
-}
-
-fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize, sub_matches: &ArgMatches) {
-    // compute hashes
-    println!("Computing perceptual hash...");
-    // get algorithm option
-    let algo = parse_algo(
-        sub_matches.value_of("algorithm").unwrap(), // default provided by clap
-    )
-    .unwrap(); // validation provided by clap
-
-    // get hash size option
-    let hash_size = parse_hash_size(
-        sub_matches.value_of("hash-size").unwrap(), // default provided by clap
-    )
-    .unwrap(); // validation provided by clap
-
-    // create a unified reply channel for worker threads
-    let (hashes_tx, hashes_rx) = unbounded();
-    // run calculations
-    calc_hashes(imgs_rx, hashes_tx, concurrency, algo, hash_size);
-    // hash reply channel buffer => vec
-    let path_hash_pairs: Vec<_> = hashes_rx.into_iter().collect();
-    println!(
-        "Finished computing perceptual hash for {} image(s)",
-        path_hash_pairs.len()
-    );
-
-    // compute pairwise hamming distances
-    println!("Computing pairwise hamming distances...");
-    // run calculations
-    let pairwise_distances = calc_pair_dist(&path_hash_pairs, concurrency);
-    println!(
-        "Finished computing hamming distances for {} pairs",
-        pairwise_distances.len()
-    );
-
-    // filter by threshold and log summary
-    let threshold = sub_matches
-        .value_of("threshold")
-        .unwrap() // clap provides default
-        .parse::<u32>()
-        .unwrap(); // u32 parse validated by clap
-    let mut similar_pairs: Vec<_> = pairwise_distances
-        .into_iter()
-        .filter_map(|(path0, path1, dist)| {
-            (dist <= threshold).then(|| (get_filename_unchecked(path0), get_filename_unchecked(path1), dist))
-        })
-        .collect();
-    println!(
-        "Found {} similar pair(s) with a hamming distance of ≤{}",
-        similar_pairs.len(),
-        threshold
-    );
-
-    // sort by distance and log each entry
-    similar_pairs.sort_by_key(|(_, _, dist)| *dist);
-    for (name0, name1, dist) in similar_pairs {
-        println!("  [{}] - [{}]  Distance: {}", name0, name1, dist);
-    }
 }
