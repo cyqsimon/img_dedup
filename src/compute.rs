@@ -52,10 +52,7 @@ pub fn calc_pair_dist(img_hashes: &[(PathBuf, ImageHash)], thread_count: usize) 
     let pairs: Vec<_> = img_hashes.iter().tuple_combinations::<(_, _)>().collect();
 
     // create channels
-    let (pairs_tx, pairs_rx): (
-        Sender<(&(PathBuf, ImageHash), &(PathBuf, ImageHash))>,
-        Receiver<(&(PathBuf, ImageHash), &(PathBuf, ImageHash))>,
-    ) = unbounded();
+    let (pairs_tx, pairs_rx): (Sender<(&(PathBuf, ImageHash), &(PathBuf, ImageHash))>, _) = unbounded();
     let (dists_tx, dists_rx) = unbounded();
 
     // using scoped thread guarantees workers terminate before caller thread,
