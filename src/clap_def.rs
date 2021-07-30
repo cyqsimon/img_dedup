@@ -4,6 +4,42 @@ use regex::Regex;
 use crate::cli_helper::parse_hash_size;
 
 pub fn build_app() -> App<'static, 'static> {
+    let arg_algo = Arg::with_name("algorithm")
+        .short("a")
+        .long("algorithm")
+        .takes_value(true)
+        .possible_values(&["mean", "h-gradient", "v-gradient", "double-gradient", "blockhash"])
+        .default_value("double-gradient")
+        .help("Set an alternate hash algorithm (long help available)")
+        .long_help(
+            "Set an alternate hash algorithm\
+        \nSee https://docs.rs/img_hash/latest/img_hash/enum.HashAlg.html for choices",
+        );
+    let arg_hash_size = Arg::with_name("hash-size")
+        .short("s")
+        .long("hash-size")
+        .takes_value(true)
+        .default_value("12,12")
+        .validator(|arg| parse_hash_size(&arg).map(|_| ()))
+        .help("Set a custom hash size (long help available)")
+        .long_help(
+            "Set a custom hash size\
+            \nAccepts a single u32, or two comma-separated u32s\
+            \nSee https://docs.rs/img_hash/latest/img_hash/struct.HasherConfig.html#hash-size \
+            for value selection",
+        );
+    let arg_dist_threshold = Arg::with_name("threshold")
+        .short("t")
+        .long("threshold")
+        .takes_value(true)
+        .default_value("16")
+        .validator(|arg| arg.parse::<u32>().map(|_| ()).map_err(|e| e.to_string()))
+        .help("Hamming distance upper threshold (long help available")
+        .long_help(
+            "The minimum hamming distance for images to be considered similar\
+            \nNote: the larger the hash size, the larger the hamming distances will generally become",
+        );
+
     App::new("Image Deduplicator")
         .version(crate_version!())
         .author("Scheimong <28627918+cyqsimon@users.noreply.github.com>")
@@ -57,78 +93,14 @@ pub fn build_app() -> App<'static, 'static> {
         .subcommand(
             SubCommand::with_name("hash")
                 .about("Compute and show hashes for the input files")
-                .arg(
-                    Arg::with_name("algorithm")
-                        .short("a")
-                        .long("algorithm")
-                        .takes_value(true)
-                        .possible_values(&["mean", "h-gradient", "v-gradient", "double-gradient", "blockhash"])
-                        .default_value("double-gradient")
-                        .help("Set an alternate hash algorithm (long help available)")
-                        .long_help(
-                            "Set an alternate hash algorithm\
-                            \nSee https://docs.rs/img_hash/latest/img_hash/enum.HashAlg.html for choices",
-                        ),
-                )
-                .arg(
-                    Arg::with_name("hash-size")
-                        .short("s")
-                        .long("hash-size")
-                        .takes_value(true)
-                        .default_value("12,12")
-                        .validator(|arg| parse_hash_size(&arg).map(|_| ()))
-                        .help("Set a custom hash size (long help available)")
-                        .long_help(
-                            "Set a custom hash size\
-                            \nAccepts a single u32, or two comma-separated u32s\
-                            \nSee https://docs.rs/img_hash/latest/img_hash/struct.HasherConfig.html#hash-size \
-                            for value selection",
-                        ),
-                ),
+                .arg(&arg_algo)
+                .arg(&arg_hash_size),
         )
         .subcommand(
             SubCommand::with_name("scan-duplicates")
                 .about("Scan the input files for duplicates without removing anything")
-                .arg(
-                    Arg::with_name("algorithm")
-                        .short("a")
-                        .long("algorithm")
-                        .takes_value(true)
-                        .possible_values(&["mean", "h-gradient", "v-gradient", "double-gradient", "blockhash"])
-                        .default_value("double-gradient")
-                        .help("Set an alternate hash algorithm (long help available)")
-                        .long_help(
-                            "Set an alternate hash algorithm\
-                            \nSee https://docs.rs/img_hash/latest/img_hash/enum.HashAlg.html for choices",
-                        ),
-                )
-                .arg(
-                    Arg::with_name("hash-size")
-                        .short("s")
-                        .long("hash-size")
-                        .takes_value(true)
-                        .default_value("12,12")
-                        .validator(|arg| parse_hash_size(&arg).map(|_| ()))
-                        .help("Set a custom hash size (long help available)")
-                        .long_help(
-                            "Set a custom hash size\
-                            \nAccepts a single u32, or two comma-separated u32s\
-                            \nSee https://docs.rs/img_hash/latest/img_hash/struct.HasherConfig.html#hash-size \
-                            for value selection",
-                        ),
-                )
-                .arg(
-                    Arg::with_name("threshold")
-                        .short("t")
-                        .long("threshold")
-                        .takes_value(true)
-                        .default_value("16")
-                        .validator(|arg| arg.parse::<u32>().map(|_| ()).map_err(|e| e.to_string()))
-                        .help("Hamming distance upper threshold (long help available")
-                        .long_help(
-                            "The minimum hamming distance for images to be considered similar\
-                            \nNote: the larger the hash size, the larger the hamming distances will generally become",
-                        ),
-                ),
+                .arg(&arg_algo)
+                .arg(&arg_hash_size)
+                .arg(&arg_dist_threshold),
         )
 }
