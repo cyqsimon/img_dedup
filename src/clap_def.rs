@@ -43,7 +43,7 @@ pub fn build_app() -> App<'static, 'static> {
     App::new("Image Deduplicator")
         .version(crate_version!())
         .author("Scheimong <28627918+cyqsimon@users.noreply.github.com>")
-        .about("A command line program that finds and removes duplicated images using perceptual hashing.")
+        .about("A command line program that finds and removes duplicated images using perceptual hashing")
         .settings(&[
             AppSettings::AllowNegativeNumbers,
             AppSettings::ArgRequiredElseHelp,
@@ -64,7 +64,7 @@ pub fn build_app() -> App<'static, 'static> {
                 .takes_value(true)
                 .default_value(".*")
                 .validator(|arg| Regex::new(&arg).map(|_| ()).map_err(|e| e.to_string()))
-                .help("Only accept files that match the regex filter."),
+                .help("Only accept files that match the regex filter"),
         )
         .arg({
             // by default, use as many threads as the host has logical cores
