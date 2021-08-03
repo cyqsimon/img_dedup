@@ -24,7 +24,7 @@ pub fn build_app() -> App<'static, 'static> {
         .help("Set a custom hash size (long help available)")
         .long_help(
             "Set a custom hash size\
-            \nAccepts a single u32, or two comma-separated u32s\
+            \nAccepts a single u32, or two comma-separated u32s (e.g. 20,16)\
             \nSee https://docs.rs/img_hash/latest/img_hash/struct.HasherConfig.html#hash-size \
             for value selection",
         );
@@ -34,9 +34,9 @@ pub fn build_app() -> App<'static, 'static> {
         .takes_value(true)
         .default_value("16")
         .validator(|arg| arg.parse::<u32>().map(|_| ()).map_err(|e| e.to_string()))
-        .help("Hamming distance upper threshold (long help available")
+        .help("Hamming distance upper threshold (inclusive) (long help available")
         .long_help(
-            "The minimum hamming distance for images to be considered similar\
+            "The minimum hamming distance for images to be considered similar (inclusive)\
             \nNote: the larger the hash size, the larger the hamming distances will generally become",
         );
 
@@ -55,7 +55,7 @@ pub fn build_app() -> App<'static, 'static> {
             Arg::with_name("input_dir")
                 .required(true)
                 .index(1)
-                .help("The directory to source input files from"),
+                .help("The directory to source input images from"),
         )
         .arg(
             Arg::with_name("input_filter")
@@ -81,7 +81,7 @@ pub fn build_app() -> App<'static, 'static> {
                         .map_err(|e| e.to_string())
                         .and_then(|th| (th != 0).then(|| ()).ok_or("Cannot specify 0 threads".into()))
                 })
-                .help("The number of threads to use for parallel compute")
+                .help("The number of threads to use for parallel computing")
         })
         .arg(
             Arg::with_name("verbose")
@@ -98,7 +98,7 @@ pub fn build_app() -> App<'static, 'static> {
         )
         .subcommand(
             SubCommand::with_name("scan-duplicates")
-                .about("Scan the input files for duplicates without removing anything")
+                .about("Scan the input files for duplicates and show them")
                 .arg(&arg_algo)
                 .arg(&arg_hash_size)
                 .arg(&arg_dist_threshold),
