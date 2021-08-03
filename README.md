@@ -6,6 +6,15 @@ This is a work in progress. The program has **no testing whatsoever**, and there
 
 If it's not obvious enough, that means **DO NOT** use in production.
 
+### If you just want to play around with it
+1. Clone this repository
+2. Read help first: `cargo run --release -- --help`.
+3. Run with correct parameters, e.g.:
+  ```bash
+  cargo run --release -- \
+  "./test_imgs" -f "(\.jpe?g)|(.\png)" hash -a "blockhash" -s "24,24"
+  ```
+
 ## Current status
 - Specify an input directory and select specific files (via `regex`) on CLI
 - Compute the perceptual hash of the selected image files
