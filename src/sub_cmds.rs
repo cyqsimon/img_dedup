@@ -1,28 +1,32 @@
 //! Each exported function in this module encapsulates
 //! all the tasks necessary for a single subcommand.
 
-use std::path::PathBuf;
+use std::{path::PathBuf, process::exit};
 
 use clap::ArgMatches;
 use crossbeam_channel::Receiver;
 use image::DynamicImage;
+use img_hash::ImageHash;
 
 use crate::{
-    file_loader::get_filename_unchecked,
-    sub_ops::{filter_max_dist, pairwise_hash_dist, stream_hash},
+    io::get_filename_unchecked,
+    sub_ops::{filter_max_dist, log_pairwise_dists_sorted, move_all_in_pairs, pairwise_hash_dist, stream_hash},
 };
 
-pub fn hash_once(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize, sub_matches: &ArgMatches) {
+pub fn hash_once(
+    imgs_rx: Receiver<(PathBuf, DynamicImage)>,
+    concurrency: usize,
+    sub_matches: &ArgMatches,
+) -> Vec<(PathBuf, ImageHash)> {
     // compute hashes
-    let name_hash_pairs: Vec<_> = stream_hash(imgs_rx, concurrency, sub_matches)
-        .unwrap() // sub_matches should satisfy arg requirements
-        .into_iter()
-        .map(|(path, hash)| (get_filename_unchecked(&path).to_string(), hash))
-        .collect();
+    let path_hash_pairs: Vec<_> = stream_hash(imgs_rx, concurrency, sub_matches).unwrap(); // sub_matches should satisfy arg requirements
 
     // format and log
     const NAME_FMT_MAX_LEN: usize = 30; // file names longer than this get truncated
-
+    let name_hash_pairs: Vec<_> = path_hash_pairs
+        .iter()
+        .map(|(path, hash)| (get_filename_unchecked(&path).to_string(), hash))
+        .collect();
     let name_fmt_len = name_hash_pairs
         .iter()
         .map(|(name, _)| name.len())
@@ -38,9 +42,15 @@ pub fn hash_once(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize,
             fmt_len = name_fmt_len + 2
         );
     }
+
+    path_hash_pairs
 }
 
-pub fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize, sub_matches: &ArgMatches) {
+pub fn scan_duplicates(
+    imgs_rx: Receiver<(PathBuf, DynamicImage)>,
+    concurrency: usize,
+    sub_matches: &ArgMatches,
+) -> Vec<(PathBuf, PathBuf, u32)> {
     // compute hashes
     let path_hash_pairs: Vec<_> = stream_hash(imgs_rx, concurrency, sub_matches).unwrap(); // sub_matches should satisfy arg requirements
 
@@ -48,13 +58,35 @@ pub fn scan_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: 
     let pairwise_distances = pairwise_hash_dist(&path_hash_pairs, concurrency);
 
     // filter by threshold
-    let mut similar_pairs = filter_max_dist(&pairwise_distances, sub_matches).unwrap(); // sub_matches should satisfy arg requirements
+    let similar_pairs = filter_max_dist(&pairwise_distances, sub_matches).unwrap(); // sub_matches should satisfy arg requirements
 
-    // sort by distance and log each entry
-    similar_pairs.sort_by_key(|(_, _, dist)| *dist);
-    for &(p0, p1, dist) in similar_pairs {
-        let n0 = get_filename_unchecked(p0);
-        let n1 = get_filename_unchecked(p1);
-        println!("  [{}] - [{}]  Distance: {}", n0, n1, dist);
+    // log each entry
+    log_pairwise_dists_sorted(&similar_pairs);
+
+    // ref -> owned
+    similar_pairs
+        .into_iter()
+        .map(|&(p0, p1, d)| (p0.into(), p1.into(), d))
+        .collect()
+}
+
+pub fn move_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize, sub_matches: &ArgMatches) {
+    // compute hashes
+    let path_hash_pairs: Vec<_> = stream_hash(imgs_rx, concurrency, sub_matches).unwrap(); // sub_matches should satisfy arg requirements
+
+    // compute pairwise hamming distances
+    let pairwise_distances = pairwise_hash_dist(&path_hash_pairs, concurrency);
+
+    // filter by threshold
+    let similar_pairs = filter_max_dist(&pairwise_distances, sub_matches).unwrap(); // sub_matches should satisfy arg requirements
+
+    // move all duplicates
+    if similar_pairs.len() == 0 {
+        println!("No duplicate images found");
+    } else {
+        if let Err(e) = move_all_in_pairs(&similar_pairs, sub_matches) {
+            println!("Failed to move duplicate images: {:?}", e);
+            exit(1);
+        }
     }
 }

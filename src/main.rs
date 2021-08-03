@@ -1,7 +1,7 @@
 mod clap_def;
 mod cli_helper;
 mod compute;
-mod file_loader;
+mod io;
 mod sub_cmds;
 mod sub_ops;
 
@@ -12,8 +12,8 @@ use std::{fs::read_dir, path::Path, process::exit, thread, time::Duration};
 
 use crate::{
     clap_def::build_app,
-    file_loader::load_in,
-    sub_cmds::{hash_once, scan_duplicates},
+    io::load_in,
+    sub_cmds::{hash_once, move_duplicates, scan_duplicates},
 };
 
 fn main() {
@@ -77,11 +77,16 @@ fn main() {
 
     // dispatch task to subcmds
     match clap_matches.subcommand() {
-        ("hash", Some(sub_matches)) => hash_once(imgs_rx, concurrency, sub_matches),
-        ("scan-duplicates", Some(sub_matches)) => {
-            scan_duplicates(imgs_rx, concurrency, sub_matches);
+        ("hash", Some(sub_matches)) => {
+            let _ = hash_once(imgs_rx, concurrency, sub_matches);
         }
-        _ => unreachable!(), // cases should always cover all defined subcmds; subcmds required
+        ("scan-duplicates", Some(sub_matches)) => {
+            let _ = scan_duplicates(imgs_rx, concurrency, sub_matches);
+        }
+        ("move-duplicates", Some(sub_matches)) => {
+            move_duplicates(imgs_rx, concurrency, sub_matches);
+        }
+        _ => unreachable!("Cases should always cover all defined subcmds"),
     };
 
     // stop monitoring daemon

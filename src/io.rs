@@ -53,3 +53,36 @@ pub fn get_filename_unchecked(path: &Path) -> &str {
         .to_str()
         .expect("Bad file name (non-UTF8) encountered unexpectedly.")
 }
+
+pub fn test_write_to_dir(dir: &Path) -> std::io::Result<()> {
+    use std::fs::create_dir_all as mkdir;
+    use std::fs::read_dir;
+    use std::fs::remove_file as rm;
+    use std::fs::write;
+
+    if dir.exists() {
+        // check that dir can be opened
+        let _ = read_dir(dir)?;
+    } else {
+        // try to mkdir
+        mkdir(dir)?;
+    }
+
+    // find unused temp file name
+    let tmp_file_name = (0..)
+        .find_map(|n| {
+            let mut test_path = dir.to_path_buf();
+            test_path.push(format!("img-dedup-write-test-{}.tmp", n));
+
+            (!test_path.exists()).then(|| test_path)
+        })
+        .unwrap(); // will find one eventually
+
+    // try write to file
+    write(&tmp_file_name, "This file is safe to delete.\n")?;
+
+    // remove test file
+    rm(&tmp_file_name)?;
+
+    Ok(())
+}

@@ -103,4 +103,17 @@ pub fn build_app() -> App<'static, 'static> {
                 .arg(&arg_hash_size)
                 .arg(&arg_dist_threshold),
         )
+        .subcommand(
+            SubCommand::with_name("move-duplicates")
+                .about("Scan for duplicates, then them to another directory")
+                .arg(&arg_algo)
+                .arg(&arg_hash_size)
+                .arg(&arg_dist_threshold)
+                .arg(
+                    Arg::with_name("destination")
+                        .required(true)
+                        .index(1)
+                        .help("The destination directory for duplicate files"),
+                ),
+        )
 }

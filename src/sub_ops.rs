@@ -6,16 +6,21 @@
 //! Each exported function in this module performs one said task,
 //! and prints all relevant info to the console.
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
 use clap::ArgMatches;
 use crossbeam_channel::{unbounded, Receiver};
 use image::DynamicImage;
 use img_hash::ImageHash;
+use itertools::Itertools;
 
 use crate::{
     cli_helper::{parse_algo, parse_hash_size},
     compute::{calc_hashes, calc_pair_dist},
+    io::{get_filename_unchecked, test_write_to_dir},
 };
 
 pub fn stream_hash(
@@ -96,4 +101,41 @@ pub fn filter_max_dist<'a>(
     );
 
     Ok(similar_pairs)
+}
+
+pub fn log_pairwise_dists_sorted(pairs: &[&(&Path, &Path, u32)]) {
+    for &&(p0, p1, dist) in pairs.iter().sorted_by_key(|(_, _, dist)| *dist) {
+        let n0 = get_filename_unchecked(p0);
+        let n1 = get_filename_unchecked(p1);
+        println!("  [{}] - [{}]  Distance: {}", n0, n1, dist);
+    }
+}
+
+pub fn move_all_in_pairs(pairs: &[&(&Path, &Path, u32)], sub_matches: &ArgMatches) -> Result<(), String> {
+    use std::fs::rename as mv;
+    use std::iter::once;
+
+    let all_files: HashSet<_> = pairs
+        .into_iter()
+        .flat_map(|&&(p0, p1, _)| once(p0).chain(once(p1)))
+        .collect();
+    let dest_dir = sub_matches
+        .value_of("destination")
+        .ok_or_else(|| "move destination directory not specified")?;
+
+    // test write to destination directory
+    test_write_to_dir(Path::new(dest_dir)).map_err(|e| e.to_string())?;
+
+    println!("Moving {} image(s) into [{}]...", all_files.len(), dest_dir);
+
+    // move all
+    for from_path in all_files.iter() {
+        let mut dest_path = Path::new(dest_dir).to_path_buf();
+        dest_path.push(get_filename_unchecked(from_path));
+        if let Err(e) = mv(from_path, dest_path) {
+            println!("Failed to move an image: {:?}", e);
+        }
+    }
+
+    Ok(())
 }
