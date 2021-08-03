@@ -105,7 +105,7 @@ pub fn build_app() -> App<'static, 'static> {
         )
         .subcommand(
             SubCommand::with_name("move-duplicates")
-                .about("Scan for duplicates, then them to another directory")
+                .about("Scan for duplicates, then move them to another directory")
                 .arg(&arg_algo)
                 .arg(&arg_hash_size)
                 .arg(&arg_dist_threshold)
