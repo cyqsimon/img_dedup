@@ -32,3 +32,4 @@ If it's not obvious enough, that means **DO NOT** use in production.
 - Migrate to `log` and `simple_logger`; add tiered logging
 - Some (more) convenient mechanism for the user to review and determine whether and which image(s) to keep
 - Automatically remove duplicate images, leaving just one (probably highest quality)
+- Perhaps a GUI?
