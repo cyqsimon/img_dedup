@@ -111,14 +111,10 @@ pub fn log_pairwise_dists_sorted(pairs: &[&(&Path, &Path, u32)]) {
     }
 }
 
-pub fn move_all_in_pairs(pairs: &[&(&Path, &Path, u32)], sub_matches: &ArgMatches) -> Result<(), String> {
+pub fn move_all(files: &HashSet<&Path>, sub_matches: &ArgMatches) -> Result<(), String> {
     use std::fs::rename as mv;
-    use std::iter::once;
 
-    let all_files: HashSet<_> = pairs
-        .into_iter()
-        .flat_map(|&&(p0, p1, _)| once(p0).chain(once(p1)))
-        .collect();
+    // get destination option
     let dest_dir = sub_matches
         .value_of("destination")
         .ok_or_else(|| "move destination directory not specified")?;
@@ -126,10 +122,10 @@ pub fn move_all_in_pairs(pairs: &[&(&Path, &Path, u32)], sub_matches: &ArgMatche
     // test write to destination directory
     test_write_to_dir(Path::new(dest_dir)).map_err(|e| e.to_string())?;
 
-    println!("Moving {} image(s) into [{}]...", all_files.len(), dest_dir);
+    println!("Moving {} image(s) into [{}]...", files.len(), dest_dir);
 
-    // move all
-    for from_path in all_files.iter() {
+    // move all, retaining original filenames
+    for &from_path in files.iter() {
         let mut dest_path = Path::new(dest_dir).to_path_buf();
         dest_path.push(get_filename_unchecked(from_path));
         if let Err(e) = mv(from_path, dest_path) {

@@ -1,7 +1,7 @@
 //! Each exported function in this module encapsulates
 //! all the tasks necessary for a single subcommand.
 
-use std::{path::PathBuf, process::exit};
+use std::{collections::HashSet, path::PathBuf, process::exit};
 
 use clap::ArgMatches;
 use crossbeam_channel::Receiver;
@@ -10,7 +10,7 @@ use img_hash::ImageHash;
 
 use crate::{
     io::get_filename_unchecked,
-    sub_ops::{filter_max_dist, log_pairwise_dists_sorted, move_all_in_pairs, pairwise_hash_dist, stream_hash},
+    sub_ops::{filter_max_dist, log_pairwise_dists_sorted, move_all, pairwise_hash_dist, stream_hash},
 };
 
 pub fn hash_once(
@@ -71,6 +71,8 @@ pub fn scan_duplicates(
 }
 
 pub fn move_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize, sub_matches: &ArgMatches) {
+    use std::iter::once;
+
     // compute hashes
     let path_hash_pairs: Vec<_> = stream_hash(imgs_rx, concurrency, sub_matches).unwrap(); // sub_matches should satisfy arg requirements
 
@@ -83,10 +85,14 @@ pub fn move_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: 
     // move all duplicates
     if similar_pairs.len() == 0 {
         println!("No duplicate images found");
-    } else {
-        if let Err(e) = move_all_in_pairs(&similar_pairs, sub_matches) {
-            println!("Failed to move duplicate images: {:?}", e);
-            exit(1);
-        }
+        return;
+    }
+    let all_files: HashSet<_> = similar_pairs
+        .into_iter()
+        .flat_map(|&(p0, p1, _)| once(p0).chain(once(p1)))
+        .collect();
+    if let Err(e) = move_all(&all_files, sub_matches) {
+        println!("Failed to move duplicate images: {:?}", e);
+        exit(1);
     }
 }
