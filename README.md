@@ -2,7 +2,7 @@
 Image deduplicator written in Rust
 
 ## WORK IN PROGRESS
-This is a work in progress. The program has **no testing whatsoever**, and there is **no guarantee whatsoever** on forward-compatibility.
+This is a work in progress. The program has **no testing whatsoever** (thanks to the amazing `rustc`, I can somewhat get away with this), and there is **no guarantee whatsoever** on forward-compatibility.
 
 If it's not obvious enough, that means **DO NOT** use in production.
 
@@ -12,7 +12,12 @@ If it's not obvious enough, that means **DO NOT** use in production.
 3. Run with correct parameters, e.g.:
   ```bash
   cargo run --release -- \
-  "./test_imgs" -f "(\.jpe?g)|(.\png)" hash -a "blockhash" -s "24,24"
+  "./test_imgs" \
+  --in-filter "(\.jpe?g)|(.\png)" \
+  --concurrency 8 \
+  hash \
+  --algorithm "blockhash" \
+  --hash-size "24,24"
   ```
 
 ## Current status
