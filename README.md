@@ -24,7 +24,7 @@ If it's not obvious enough, that means **DO NOT** use in production.
 - Specify an input directory and select specific files (via `regex`) on CLI
 - Compute the perceptual hash of the selected image files
 - Compute the pairwise hamming distance of images, thereby finding similar looking ones
-- Move similar looking images into a user-specified directory
+- Move similar looking images into a user-specified directory for manual review
 - All operations efficiently multithreaded using channels
 
 ## Planned objectives
