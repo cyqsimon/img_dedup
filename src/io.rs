@@ -1,3 +1,9 @@
+//! This module contains functions that primarily deal with IO.
+//!
+//! This is not to say that other modules contain no IO code;
+//! rather IO operations in other modules should be
+//! secondary and/or supplementary to their functionality.
+
 use crossbeam_channel::Sender;
 use image::DynamicImage;
 use regex::Regex;
@@ -6,6 +12,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// This function tries to load all files in the opened directory
+/// that matches the filter, tries to parse them into images,
+/// and then send them via a channel.
+///
+/// This is a single-threaded operation.
+///
+/// If an error is encountered while loading or parsing an individual file,
+/// it will be logged to console and skipped.
 pub fn load_in(imgs_tx: Sender<(PathBuf, DynamicImage)>, opened_in_dir: ReadDir, in_filter: &Regex) {
     let selected_files: Vec<_> = opened_in_dir // short-circuit if error while opening directory
         // iter over io::Result<DirEntry>
@@ -47,6 +61,12 @@ pub fn load_in(imgs_tx: Sender<(PathBuf, DynamicImage)>, opened_in_dir: ReadDir,
     }
 }
 
+/// This function takes the filename from a path,
+/// and tries to parse it into a UTF-8 string,
+/// panicking if it's unable to do so.
+///
+/// This function is useful when the path's filename has
+/// already been validated previously and does not need to be checked again.
 pub fn get_filename_unchecked(path: &Path) -> &str {
     path.file_name()
         .expect("File \"..\" encountered unexpectedly.")
@@ -54,6 +74,11 @@ pub fn get_filename_unchecked(path: &Path) -> &str {
         .expect("Bad file name (non-UTF8) encountered unexpectedly.")
 }
 
+/// This function checks that we are able to write a file
+/// to a directory specified by its path.
+///
+/// A temporary file will be created in this path and
+/// immediately deleted if there is no error.
 pub fn test_write_to_dir(dir: &Path) -> std::io::Result<()> {
     use std::fs::create_dir_all as mkdir;
     use std::fs::read_dir;
@@ -68,7 +93,7 @@ pub fn test_write_to_dir(dir: &Path) -> std::io::Result<()> {
         mkdir(dir)?;
     }
 
-    // find unused temp file name
+    // find unused temp file name, just in case
     let tmp_file_name = (0..)
         .find_map(|n| {
             let mut test_path = dir.to_path_buf();

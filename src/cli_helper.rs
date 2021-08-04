@@ -1,5 +1,14 @@
+//! This module contains functions that help with parsing and validation
+//! of complex arguments provided by the user via CLI.
+
 use img_hash::HashAlg;
 
+/// The `hash-size` argument can be provided in two ways:
+/// - either a single u32 (e.g. `24`, equivalent to `24,24`),
+/// - or a pair of u32s separated by comma (e.g. `32,24`).
+///
+/// This function parses and validates both cases,
+/// even tolerating extraneous white spaces.
 pub fn parse_hash_size(arg: &str) -> Result<(u32, u32), String> {
     fn parse_u32_nonzero(num: &str) -> Result<u32, String> {
         match num.parse::<u32>() {
@@ -21,6 +30,11 @@ pub fn parse_hash_size(arg: &str) -> Result<(u32, u32), String> {
     }
 }
 
+/// This function parses the name of the selected algorithm
+/// into its corresponding enum variant.
+///
+/// If you are adding more algorithms in the future,
+/// remember to update `clap`'s possible values in [clap_def](crate::clap_def).
 pub fn parse_algo(arg: &str) -> Result<HashAlg, String> {
     use HashAlg::*;
     match arg {
@@ -29,6 +43,6 @@ pub fn parse_algo(arg: &str) -> Result<HashAlg, String> {
         "v-gradient" => Ok(VertGradient),
         "double-gradient" => Ok(DoubleGradient),
         "blockhash" => Ok(Blockhash),
-        other => Err(format!("\"{}\" is not a valid hashing algorithm", other)),
+        other => Err(format!("\"{}\" is not a supported hashing algorithm", other)),
     }
 }

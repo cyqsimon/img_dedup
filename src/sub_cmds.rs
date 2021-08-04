@@ -13,6 +13,7 @@ use crate::{
     sub_ops::{filter_max_dist, log_pairwise_dists_sorted, move_all, pairwise_hash_dist, stream_hash},
 };
 
+/// Corresponds to subcommand `hash`.
 pub fn hash_once(
     imgs_rx: Receiver<(PathBuf, DynamicImage)>,
     concurrency: usize,
@@ -46,6 +47,7 @@ pub fn hash_once(
     path_hash_pairs
 }
 
+/// Corresponds to subcommand `scan-duplicates`.
 pub fn scan_duplicates(
     imgs_rx: Receiver<(PathBuf, DynamicImage)>,
     concurrency: usize,
@@ -70,6 +72,7 @@ pub fn scan_duplicates(
         .collect()
 }
 
+/// Corresponds to subcommand `move-duplicates`.
 pub fn move_duplicates(imgs_rx: Receiver<(PathBuf, DynamicImage)>, concurrency: usize, sub_matches: &ArgMatches) {
     use std::iter::once;
 

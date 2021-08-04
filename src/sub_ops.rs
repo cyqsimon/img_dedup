@@ -23,6 +23,11 @@ use crate::{
     io::{get_filename_unchecked, test_write_to_dir},
 };
 
+/// This function receives a list of loaded images via a channel,
+/// calculates their hashes, and collects them into a Vec.
+///
+/// Returns Err if the expected arguments (`algorithm`, `hash-size`)
+/// are not found in `sub_matches`.
 pub fn stream_hash(
     imgs_rx: Receiver<(PathBuf, DynamicImage)>,
     concurrency: usize,
@@ -61,6 +66,8 @@ pub fn stream_hash(
     Ok(path_hash_pairs)
 }
 
+/// This function is a simple wrapper around [`calc_pair_dist`],
+/// with additional printing to the console.
 pub fn pairwise_hash_dist(path_hash_pairs: &[(PathBuf, ImageHash)], concurrency: usize) -> Vec<(&Path, &Path, u32)> {
     println!("Computing pairwise hamming distances...");
 
@@ -75,6 +82,11 @@ pub fn pairwise_hash_dist(path_hash_pairs: &[(PathBuf, ImageHash)], concurrency:
     pairwise_distances
 }
 
+/// This function takes a list of pairwise hamming distances,
+/// and filters out the pairs greater than the threshold.
+///
+/// Returns Err if the expected argument (`threshold`)
+/// is not found in `sub_matches`.
 pub fn filter_max_dist<'a>(
     pairwise_distances: &'a [(&Path, &Path, u32)],
     sub_matches: &ArgMatches,
@@ -103,6 +115,9 @@ pub fn filter_max_dist<'a>(
     Ok(similar_pairs)
 }
 
+/// This function takes a list of pairwise hamming distances
+/// and log them to the console formatted, sorted by their
+/// hamming distances in ascending order.
 pub fn log_pairwise_dists_sorted(pairs: &[&(&Path, &Path, u32)]) {
     for &&(p0, p1, dist) in pairs.iter().sorted_by_key(|(_, _, dist)| *dist) {
         let n0 = get_filename_unchecked(p0);
@@ -111,6 +126,14 @@ pub fn log_pairwise_dists_sorted(pairs: &[&(&Path, &Path, u32)]) {
     }
 }
 
+/// This function takes a set of paths to files
+/// and move them to the specified destination directory.
+///
+/// If an error is encountered while moving an individual file,
+/// it will be logged to console and skipped.
+///
+/// Returns Err if the expected argument (`destination`)
+/// is not found in `sub_matches`.
 pub fn move_all(files: &HashSet<&Path>, sub_matches: &ArgMatches) -> Result<(), String> {
     use std::fs::rename as mv;
 

@@ -1,8 +1,11 @@
+//! This module defines the CLI API via clap.
+
 use clap::{crate_version, App, AppSettings, Arg, SubCommand};
 use regex::Regex;
 
 use crate::cli_helper::parse_hash_size;
 
+/// Build a clap app. Only call once.
 pub fn build_app() -> App<'static, 'static> {
     let arg_algo = Arg::with_name("algorithm")
         .short("a")

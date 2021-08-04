@@ -1,3 +1,6 @@
+//! This module contains functions that primarily deal with
+//! typically multi-threaded heavy computation tasks.
+
 use std::{
     path::{Path, PathBuf},
     thread,
@@ -8,6 +11,13 @@ use image::DynamicImage;
 use img_hash::{HashAlg, HasherConfig, ImageHash};
 use itertools::Itertools;
 
+/// This function receives a list of parsed images via a channel,
+/// computes their perceptual hash using the specified settings,
+/// and sends the result via another channel.
+///
+/// This operation will always spawn the number of threads
+/// as specified by its argument, even in cases where it's overkill,
+/// because we don't know how many (or rather, few) files we have to process.
 pub fn calc_hashes(
     imgs_rx: Receiver<(PathBuf, DynamicImage)>,
     hashes_tx: Sender<(PathBuf, ImageHash)>,
@@ -45,6 +55,14 @@ pub fn calc_hashes(
     });
 }
 
+/// This function takes a list of image paths and their hashes,
+/// turns them into n * (n - 1) pairs via combination,
+/// calculates the perceptual hamming distance between the two,
+/// and collects them into a Vec.
+///
+/// This operation will always spawn the number of threads
+/// as specified by its argument, even in cases where it's overkill,
+/// because we don't know how many (or rather, few) pairs we have to process.
 pub fn calc_pair_dist(img_hashes: &[(PathBuf, ImageHash)], thread_count: usize) -> Vec<(&Path, &Path, u32)> {
     use crossbeam::thread;
 
