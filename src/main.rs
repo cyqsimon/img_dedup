@@ -6,7 +6,6 @@ mod sub_cmds;
 mod sub_ops;
 
 use crossbeam_channel::bounded;
-
 use regex::Regex;
 use std::{fs::read_dir, path::Path, process::exit, thread, time::Duration};
 
