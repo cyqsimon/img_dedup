@@ -1,10 +1,10 @@
 # img_dedup
 Image deduplicator written in Rust
 
-## WORK IN PROGRESS
-This is a work in progress. The program has **no testing whatsoever** (thanks to the amazing `rustc`, I can somewhat get away with this), and there is **no guarantee whatsoever** on forward-compatibility.
+## THIS WAS MY PERSONAL PLAYGROUND
+The code is terrible and the effort was minimal.
 
-If it's not obvious enough, that means **DO NOT** use in production.
+If you are looking for an actually decent image deduplicator written in Rust, go check out [Czkawka](https://github.com/qarmin/czkawka). It has quite an unfriendly name (unless you speak Polish) IMO but its features are pretty neat.
 
 ### If you just want to play around with it
 1. Clone this repository
@@ -28,8 +28,4 @@ If it's not obvious enough, that means **DO NOT** use in production.
 - All operations efficiently multithreaded using channels
 
 ## Planned objectives
-- Further optimise "similarity threshold"
-- Migrate to `log` and `simple_logger`; add tiered logging
-- Some (more) convenient mechanism for the user to review and determine whether and which image(s) to keep
-- Automatically remove duplicate images, leaving just one (probably highest quality)
-- Perhaps a GUI?
+- Nothing. This project is abandoned.
